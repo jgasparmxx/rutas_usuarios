@@ -262,6 +262,16 @@ public partial class DashboardViewModel : ViewModelBase
                         itemSenderista.IdAgrupacion = FormSenderista.IdAgrupacion;
                     }
 
+                    var agMemory = _allAgrupaciones.FirstOrDefault(a => string.Equals(a.IdAgrupacion, ag.IdAgrupacion, StringComparison.OrdinalIgnoreCase));
+                    if (agMemory != null)
+                    {
+                        agMemory.Clave = ag.Clave;
+                    }
+                    if (FormAgrupacion != null && string.Equals(FormAgrupacion.IdAgrupacion, ag.IdAgrupacion, StringComparison.OrdinalIgnoreCase))
+                    {
+                        FormAgrupacion.Clave = ag.Clave;
+                    }
+
                     RefreshAvailableAgrupaciones();
 
                     // Avisándole al usuario que se realizó la actualización
@@ -381,6 +391,16 @@ public partial class DashboardViewModel : ViewModelBase
                     if (itemSenderista != null)
                     {
                         itemSenderista.Rol = newRole.Key;
+                    }
+
+                    var agMemory = _allAgrupaciones.FirstOrDefault(a => string.Equals(a.IdAgrupacion, ag?.IdAgrupacion, StringComparison.OrdinalIgnoreCase));
+                    if (agMemory != null && ag != null)
+                    {
+                        agMemory.Clave = ag.Clave;
+                    }
+                    if (ag != null && FormAgrupacion != null && string.Equals(FormAgrupacion.IdAgrupacion, ag.IdAgrupacion, StringComparison.OrdinalIgnoreCase))
+                    {
+                        FormAgrupacion.Clave = ag.Clave;
                     }
 
                     RefreshAvailableAgrupaciones();
@@ -552,6 +572,7 @@ public partial class DashboardViewModel : ViewModelBase
             AvailableAgrupaciones.Add(ag);
         }
         OnPropertyChanged(nameof(SelectedFormAgrupacion));
+        ApplyCurrentFilter();
     }
 
     partial void OnSearchQueryChanged(string value)

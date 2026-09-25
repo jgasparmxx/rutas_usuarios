@@ -21,8 +21,40 @@ public partial class Agrupacion : ObservableObject
         set => SetProperty(ref _nombre, value);
     }
 
+    private string? _responsable;
+    [JsonPropertyName("responsable")]
+    public string? Responsable
+    {
+        get => _responsable;
+        set => SetProperty(ref _responsable, value);
+    }
+
+    private string? _telefono;
+    [JsonPropertyName("telefono")]
+    public string? Telefono
+    {
+        get => _telefono;
+        set => SetProperty(ref _telefono, value);
+    }
+
+    private string? _email;
+    [JsonPropertyName("email")]
+    public string? Email
+    {
+        get => _email;
+        set => SetProperty(ref _email, value);
+    }
+
+    private string? _fechaCreacion;
+    [JsonPropertyName("fecha_creacion")]
+    public string? FechaCreacion
+    {
+        get => _fechaCreacion;
+        set => SetProperty(ref _fechaCreacion, value);
+    }
+
     private string? _descripcion;
-    [JsonPropertyName("descripcion")]
+    [JsonIgnore]
     public string? Descripcion
     {
         get => _descripcion;
@@ -30,7 +62,7 @@ public partial class Agrupacion : ObservableObject
     }
 
     private string? _ciudad;
-    [JsonPropertyName("ciudad")]
+    [JsonIgnore]
     public string? Ciudad
     {
         get => _ciudad;
@@ -38,7 +70,7 @@ public partial class Agrupacion : ObservableObject
     }
 
     private string? _contacto;
-    [JsonPropertyName("contacto")]
+    [JsonIgnore]
     public string? Contacto
     {
         get => _contacto;
@@ -57,6 +89,10 @@ public partial class Agrupacion : ObservableObject
     {
         IdAgrupacion = IdAgrupacion,
         Nombre = Nombre,
+        Responsable = Responsable,
+        Telefono = Telefono,
+        Email = Email,
+        FechaCreacion = FechaCreacion,
         Descripcion = Descripcion,
         Ciudad = Ciudad,
         Contacto = Contacto,

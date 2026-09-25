@@ -218,13 +218,26 @@ public class DataRepository : IDataRepository
         bool apiSuccess = false;
         try
         {
-            await _apiClient.PostAsync<List<Agrupacion>>("/agrupaciones", agrupacion, CurrentToken, upsert: true);
+            bool patchOk = await _apiClient.PatchAsync($"/agrupaciones?id_agrupacion=eq.{Uri.EscapeDataString(agrupacion.IdAgrupacion)}", agrupacion, CurrentToken);
+            if (!patchOk)
+            {
+                await _apiClient.PostAsync<List<Agrupacion>>("/agrupaciones", agrupacion, CurrentToken, upsert: true);
+            }
             apiSuccess = true;
             IsOnline = true;
         }
         catch
         {
-            IsOnline = false;
+            try
+            {
+                await _apiClient.PostAsync<List<Agrupacion>>("/agrupaciones", agrupacion, CurrentToken, upsert: true);
+                apiSuccess = true;
+                IsOnline = true;
+            }
+            catch
+            {
+                IsOnline = false;
+            }
         }
 
         await _cacheService.UpsertAgrupacionAsync(agrupacion);

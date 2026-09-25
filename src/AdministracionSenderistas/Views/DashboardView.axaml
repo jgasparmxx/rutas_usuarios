@@ -751,9 +751,24 @@
                                             <TextBox Text="{Binding FormAgrupacion.Contacto, Mode=TwoWay}" />
                                         </StackPanel>
                                     </Grid>
-                                    <StackPanel Spacing="4" Margin="0,0,0,10">
-                                        <TextBlock Text="Clave (Correos de Administradores con Rol 'A')" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                        <TextBox Text="{Binding FormAgrupacion.Clave, Mode=TwoWay}" Watermark="correo1@dominio.com, correo2@dominio.com" />
+                                    <StackPanel Spacing="6" Margin="0,0,0,12">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Text="Clave / Administradores de la Agrupación (Rol 'A')" FontWeight="SemiBold" FontSize="12" Foreground="#38BDF8" />
+                                            <TextBlock Grid.Column="1" Text="Correos autorizados (separados por coma)" FontSize="11" Foreground="#94A3B8" />
+                                        </Grid>
+                                        <TextBox Text="{Binding FormAgrupacion.Clave, Mode=TwoWay}"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 MinHeight="85"
+                                                 Height="95"
+                                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                 Background="#0F172A"
+                                                 BorderBrush="#0284C7"
+                                                 Foreground="#F8FAFC"
+                                                 FontFamily="Consolas, Cascadia Code, monospace"
+                                                 FontSize="12"
+                                                 Padding="10,8"
+                                                 Watermark="ejemplo: admin1@correo.com, admin2@correo.com" />
                                     </StackPanel>
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="Descripción" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />

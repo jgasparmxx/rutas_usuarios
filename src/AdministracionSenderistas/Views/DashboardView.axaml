@@ -1,0 +1,1183 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AdministracionSenderistas.ViewModels"
+             x:Class="AdministracionSenderistas.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel"
+             Background="#0B0F19">
+
+    <Grid>
+        <Grid RowDefinitions="Auto,Auto,*" Margin="16,12,16,16">
+
+        <!-- ROW 0: TOP HEADER BAR -->
+        <Border Grid.Row="0"
+                Background="#131B2B"
+                BorderBrush="#253248"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="16,12"
+                Margin="0,0,0,12">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+
+                <!-- Brand Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Border Width="36" Height="36"
+                            CornerRadius="8"
+                            Background="#064E3B"
+                            BorderBrush="#10B981"
+                            BorderThickness="1">
+                        <TextBlock Text="▲"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Foreground="#34D399"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="ADMINISTRACIÓN SENDERISTAS"
+                                   FontSize="15"
+                                   FontWeight="Bold"
+                                   Foreground="#F8FAFC"
+                                   LetterSpacing="0.8" />
+                        <TextBlock Text="Panel de Gestión BD PostgreSQL (Neon) &amp; PostgREST"
+                                   FontSize="11"
+                                   Foreground="#64748B" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- User Session & Connection Status Badge -->
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="16"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+
+                    <!-- User badge -->
+                    <Border Background="#1E293B"
+                            BorderBrush="#334155"
+                            BorderThickness="1"
+                            CornerRadius="20"
+                            Padding="12,5">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="👤" VerticalAlignment="Center" FontSize="12" />
+                            <TextBlock Text="{Binding CurrentUserName}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="#E2E8F0"
+                                       VerticalAlignment="Center" />
+                            <!-- Role Pill Badge -->
+                            <Border Background="#065F46"
+                                    CornerRadius="10"
+                                    Padding="8,2">
+                                <TextBlock Text="{Binding CurrentUserRole}"
+                                           FontSize="10"
+                                           FontWeight="Bold"
+                                           Foreground="#6EE7B7" />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Connection indicator -->
+                    <Border Background="#1E293B"
+                            BorderBrush="#334155"
+                            BorderThickness="1"
+                            CornerRadius="20"
+                            Padding="12,5">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse Width="8" Height="8" Fill="#10B981" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ConnectionState}"
+                                       FontSize="11"
+                                       Foreground="#94A3B8"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Actions (Sync All & Logout) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Classes="secondary"
+                            Command="{Binding SyncAllTablesCommand}"
+                            ToolTip.Tip="Sincronizar todas las tablas con API y actualizar caché SQLite">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="⟳" FontWeight="Bold" FontSize="14" />
+                            <TextBlock Text="Sincronizar Todo" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Classes="danger"
+                            Command="{Binding LogoutCommand}"
+                            ToolTip.Tip="Cerrar la sesión actual">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="Cerrar Sesión" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ROW 1: STATUS / NOTIFICATION BANNER -->
+        <Border Grid.Row="1"
+                Background="#16253B"
+                BorderBrush="#1E3A5F"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="12,8"
+                Margin="0,0,0,12"
+                IsVisible="{Binding IsBannerVisible}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="ℹ" Foreground="#38BDF8" FontWeight="Bold" FontSize="14" />
+                    <TextBlock Text="{Binding StatusBanner}"
+                               Foreground="#BAE6FD"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <ProgressBar Grid.Column="1"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsLoading}"
+                             Height="2"
+                             Margin="20,0"
+                             Foreground="#38BDF8"
+                             Background="#1E293B"
+                             VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <!-- ROW 2: MAIN CONTENT (LEFT: GRID/FORM TABS, RIGHT: MENU TABLAS) -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,260">
+
+            <!-- LEFT AREA: TABS (TAB 1: GRID, TAB 2: FORMULARIO) -->
+            <Border Grid.Column="0"
+                    Background="#131B2B"
+                    BorderBrush="#253248"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Margin="0,0,12,0"
+                    ClipToBounds="True">
+
+                <TabControl SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                            Padding="16">
+
+                    <!-- ============================================== -->
+                    <!-- TAB 1: GRID DE DATOS (VISUALIZACIÓN)           -->
+                    <!-- ============================================== -->
+                    <TabItem Header="📋 Listado y Visualización (Grid)"
+                             FontSize="13"
+                             FontWeight="SemiBold">
+                        <Grid RowDefinitions="Auto,*,Auto" Margin="0,12,0,0">
+
+                            <!-- Filter & Action Toolbar -->
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,12">
+
+                                <!-- Search Box -->
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding SearchQuery, Mode=TwoWay}"
+                                         Watermark="🔍 Buscar en tabla actual (correo, nombre, id, teléfono...)"
+                                         Margin="0,0,8,0" />
+
+                                <!-- Optional Role Filter (Visible on Senderistas) -->
+                                <ComboBox Grid.Column="1"
+                                          SelectedItem="{Binding FilterRole, Mode=TwoWay}"
+                                          Margin="0,0,8,0"
+                                          Width="150">
+                                    <ComboBoxItem Content="Todos" />
+                                    <ComboBoxItem Content="O" />
+                                    <ComboBoxItem Content="A" />
+                                    <ComboBoxItem Content="G" />
+                                    <ComboBoxItem Content="S" />
+                                </ComboBox>
+
+                                <!-- Action Buttons -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                                    <Button Classes="primary"
+                                            Command="{Binding NewRecordCommand}"
+                                            IsVisible="{Binding CanCreateNew}"
+                                            ToolTip.Tip="Crear nuevo registro">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="+" FontWeight="Bold" />
+                                            <TextBlock Text="Nuevo" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Classes="secondary"
+                                            Command="{Binding EditSelectedCommand}"
+                                            ToolTip.Tip="Ver y editar registro en formulario">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="✏" />
+                                            <TextBlock Text="Editar" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Classes="danger"
+                                            Command="{Binding DeleteSelectedCommand}"
+                                            ToolTip.Tip="Eliminar registro seleccionado">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <TextBlock Text="🗑" />
+                                            <TextBlock Text="Eliminar" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Classes="secondary"
+                                            Command="{Binding RefreshCurrentTableCommand}"
+                                            ToolTip.Tip="Refrescar datos desde API / Caché">
+                                        <TextBlock Text="⟳" FontWeight="Bold" />
+                                    </Button>
+
+                                    <Button Classes="secondary"
+                                            Command="{Binding ExportCsvCommand}"
+                                            ToolTip.Tip="Exportar vista a archivo CSV">
+                                        <TextBlock Text="⬇ CSV" />
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- DataGrids Container: Switches between tables -->
+                            <Panel Grid.Row="1">
+
+                                <!-- DATAGRID: SENDERISTAS -->
+                                <DataGrid ItemsSource="{Binding FilteredSenderistas}"
+                                          SelectedItem="{Binding SelectedSenderista, Mode=TwoWay}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserSortColumns="True"
+                                          SelectionMode="Single"
+                                          IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Senderistas}}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="210" />
+                                        <DataGridTextColumn Header="Nombre Completo" Binding="{Binding Nombre}" Width="190" />
+                                        <DataGridTextColumn Header="Teléfono" Binding="{Binding Telefono}" Width="120" />
+                                        <DataGridTextColumn Header="Sexo" Binding="{Binding Sexo}" Width="70" />
+                                        <DataGridTextColumn Header="Nivel" Binding="{Binding NivelSenderista}" Width="110" />
+                                        <DataGridTextColumn Header="Fecha Nacimiento" Binding="{Binding FechaNacimiento}" Width="130" />
+                                        <DataGridTextColumn Header="Mín. Distancia" Binding="{Binding MinimoLongitudKm}" Width="120" />
+                                        <DataGridTextColumn Header="Rol" Binding="{Binding RolDescripcion}" Width="140" />
+                                        <DataGridCheckBoxColumn Header="Bloqueado" Binding="{Binding Bloqueado}" Width="95" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- DATAGRID: RUTAS -->
+                                <DataGrid ItemsSource="{Binding FilteredRutas}"
+                                          SelectedItem="{Binding SelectedRuta, Mode=TwoWay}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserSortColumns="True"
+                                          SelectionMode="Single"
+                                          IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Rutas}}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID Ruta" Binding="{Binding Id}" Width="140" />
+                                        <DataGridTextColumn Header="Nombre de la Ruta" Binding="{Binding Nombre}" Width="220" />
+                                        <DataGridTextColumn Header="Distancia (km)" Binding="{Binding DistanciaGps}" Width="110" />
+                                        <DataGridTextColumn Header="Fecha" Binding="{Binding Fecha}" Width="110" />
+                                        <DataGridTextColumn Header="Dificultad" Binding="{Binding Dificultad}" Width="110" />
+                                        <DataGridCheckBoxColumn Header="Pública" Binding="{Binding Publico}" Width="90" />
+                                        <DataGridTextColumn Header="Agrupación" Binding="{Binding Agrupacion}" Width="110" />
+                                        <DataGridTextColumn Header="Email Creador" Binding="{Binding EmailCreador}" Width="180" />
+                                        <DataGridTextColumn Header="Duración Est." Binding="{Binding DuracionEstimada}" Width="120" />
+                                        <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="250" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- DATAGRID: AGRUPACIONES -->
+                                <DataGrid ItemsSource="{Binding FilteredAgrupaciones}"
+                                          SelectedItem="{Binding SelectedAgrupacion, Mode=TwoWay}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserSortColumns="True"
+                                          SelectionMode="Single"
+                                          IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Agrupaciones}}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID Agrupación" Binding="{Binding IdAgrupacion}" Width="140" />
+                                        <DataGridTextColumn Header="Nombre" Binding="{Binding Nombre}" Width="220" />
+                                        <DataGridTextColumn Header="Ciudad" Binding="{Binding Ciudad}" Width="140" />
+                                        <DataGridTextColumn Header="Contacto" Binding="{Binding Contacto}" Width="160" />
+                                        <DataGridTextColumn Header="Clave (Admin Rol 'A')" Binding="{Binding Clave}" Width="220" />
+                                        <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="280" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- DATAGRID: INVITACIONES -->
+                                <DataGrid ItemsSource="{Binding FilteredInvitaciones}"
+                                          SelectedItem="{Binding SelectedInvitacion, Mode=TwoWay}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserSortColumns="True"
+                                          SelectionMode="Single"
+                                          IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Invitaciones}}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID Invitación" Binding="{Binding IdInvitacion}" Width="140" />
+                                        <DataGridTextColumn Header="Título" Binding="{Binding Titulo}" Width="220" />
+                                        <DataGridTextColumn Header="ID Ruta" Binding="{Binding IdRuta}" Width="130" />
+                                        <DataGridTextColumn Header="Fecha de Salida" Binding="{Binding FechaSalida}" Width="150" />
+                                        <DataGridTextColumn Header="Punto de Encuentro" Binding="{Binding PuntoEncuentro}" Width="180" />
+                                        <DataGridTextColumn Header="Agrupación" Binding="{Binding IdAgrupacion}" Width="110" />
+                                        <DataGridTextColumn Header="Organizador" Binding="{Binding EmailOrganizador}" Width="180" />
+                                        <DataGridTextColumn Header="Cupo Máx." Binding="{Binding CupoMaximo}" Width="90" />
+                                        <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="100" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- DATAGRID: PARTICIPANTES -->
+                                <DataGrid ItemsSource="{Binding FilteredParticipantes}"
+                                          SelectedItem="{Binding SelectedParticipante, Mode=TwoWay}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserSortColumns="True"
+                                          SelectionMode="Single"
+                                          IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Participantes}}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID Invitación" Binding="{Binding IdInvitacion}" Width="160" />
+                                        <DataGridTextColumn Header="Email Senderista" Binding="{Binding EmailSenderista}" Width="240" />
+                                        <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="130" />
+                                        <DataGridTextColumn Header="Fecha de Registro" Binding="{Binding FechaRegistro}" Width="160" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- DATAGRID: FRASES DIFICULTAD -->
+                                <DataGrid ItemsSource="{Binding FilteredFrasesDificultad}"
+                                          SelectedItem="{Binding SelectedFraseDificultad, Mode=TwoWay}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserSortColumns="True"
+                                          SelectionMode="Single"
+                                          IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.FrasesDificultad}}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID Frase" Binding="{Binding Id}" Width="140" />
+                                        <DataGridTextColumn Header="Nivel Dificultad" Binding="{Binding Dificultad}" Width="140" />
+                                        <DataGridTextColumn Header="Frase / Mensaje" Binding="{Binding Frase}" Width="320" />
+                                        <DataGridTextColumn Header="Autor" Binding="{Binding Autor}" Width="180" />
+                                        <DataGridCheckBoxColumn Header="Activa" Binding="{Binding Activa}" Width="90" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- DATAGRID: REQUISITOS SENDERISMO -->
+                                <DataGrid ItemsSource="{Binding FilteredRequisitosSenderismo}"
+                                          SelectedItem="{Binding SelectedRequisitoSenderismo, Mode=TwoWay}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserSortColumns="True"
+                                          SelectionMode="Single"
+                                          IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.RequisitosSenderismo}}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID Requisito" Binding="{Binding Id}" Width="140" />
+                                        <DataGridTextColumn Header="Categoría" Binding="{Binding Categoria}" Width="150" />
+                                        <DataGridTextColumn Header="Requisito" Binding="{Binding Requisito}" Width="260" />
+                                        <DataGridTextColumn Header="Descripción Detallada" Binding="{Binding Descripcion}" Width="300" />
+                                        <DataGridCheckBoxColumn Header="Obligatorio" Binding="{Binding EsObligatorio}" Width="100" />
+                                        <DataGridCheckBoxColumn Header="Activo" Binding="{Binding Activo}" Width="90" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                            </Panel>
+
+                            <!-- Footer Status Bar -->
+                            <Border Grid.Row="2"
+                                    Background="#0F172A"
+                                    BorderBrush="#1E293B"
+                                    BorderThickness="0,1,0,0"
+                                    Padding="10,8"
+                                    Margin="0,8,0,0">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16">
+                                        <TextBlock Text="Registros en vista:" FontSize="11" Foreground="#64748B" />
+                                        <TextBlock Text="{Binding FilteredSenderistas.Count}" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"
+                                                   IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Senderistas}}" />
+                                        <TextBlock Text="{Binding FilteredRutas.Count}" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"
+                                                   IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Rutas}}" />
+                                        <TextBlock Text="{Binding FilteredAgrupaciones.Count}" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"
+                                                   IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Agrupaciones}}" />
+                                        <TextBlock Text="{Binding FilteredInvitaciones.Count}" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"
+                                                   IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Invitaciones}}" />
+                                        <TextBlock Text="{Binding FilteredParticipantes.Count}" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"
+                                                   IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Participantes}}" />
+                                        <TextBlock Text="{Binding FilteredFrasesDificultad.Count}" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"
+                                                   IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.FrasesDificultad}}" />
+                                        <TextBlock Text="{Binding FilteredRequisitosSenderismo.Count}" FontSize="11" FontWeight="Bold" Foreground="#94A3B8"
+                                                   IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.RequisitosSenderismo}}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="💾 Caché local SQLite sincronizado" FontSize="11" Foreground="#10B981" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                        </Grid>
+                    </TabItem>
+
+                    <!-- ============================================== -->
+                    <!-- TAB 2: FORMULARIO DE DETALLES Y EDICIÓN       -->
+                    <!-- ============================================== -->
+                    <TabItem Header="✏ Formulario de Detalle y Edición"
+                             FontSize="13"
+                             FontWeight="SemiBold">
+
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                            <StackPanel Spacing="16" MaxWidth="980" HorizontalAlignment="Left">
+
+                                <!-- Form Navigation Bar & Header (Discreta, integrada y elegante para todas las tablas) -->
+                                <Border Background="#131B2B"
+                                        BorderBrush="#253248"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="12,8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <!-- Left: Back Button & Context Title -->
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                            <Button Classes="secondary"
+                                                    Command="{Binding BackToGridCommand}"
+                                                    Padding="10,6"
+                                                    Height="32"
+                                                    ToolTip.Tip="Regresar al listado general">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="←" FontWeight="Bold" FontSize="12" />
+                                                    <TextBlock Text="Volver a la Lista" FontSize="11" />
+                                                </StackPanel>
+                                            </Button>
+
+                                            <Border Width="1" Height="18" Background="#334155" VerticalAlignment="Center" Margin="2,0" />
+
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="Detalle y Edición" FontSize="13" FontWeight="SemiBold" Foreground="#F8FAFC" />
+                                                <TextBlock Text="Sincronización API + Caché SQLite" FontSize="10" Foreground="#64748B" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Right: Subtle Integrated Record Navigator -->
+                                        <Border Grid.Column="2"
+                                                Background="#0E1626"
+                                                BorderBrush="#1E293B"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                Padding="4,2"
+                                                VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                <Button Classes="secondary"
+                                                        Command="{Binding NavigateFirstRecordCommand}"
+                                                        IsEnabled="{Binding CanNavigatePrevious}"
+                                                        Padding="8,4"
+                                                        Height="28"
+                                                        ToolTip.Tip="Primer registro">
+                                                    <TextBlock Text="⏮" FontSize="10" />
+                                                </Button>
+
+                                                <Button Classes="secondary"
+                                                        Command="{Binding NavigatePreviousRecordCommand}"
+                                                        IsEnabled="{Binding CanNavigatePrevious}"
+                                                        Padding="8,4"
+                                                        Height="28"
+                                                        ToolTip.Tip="Registro anterior">
+                                                    <TextBlock Text="◀" FontSize="10" />
+                                                </Button>
+
+                                                <Border Background="#16253B"
+                                                        CornerRadius="4"
+                                                        Padding="8,3"
+                                                        Margin="2,0"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding RecordNavigationStatus}"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#38BDF8"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+
+                                                <Button Classes="secondary"
+                                                        Command="{Binding NavigateNextRecordCommand}"
+                                                        IsEnabled="{Binding CanNavigateNext}"
+                                                        Padding="8,4"
+                                                        Height="28"
+                                                        ToolTip.Tip="Siguiente registro">
+                                                    <TextBlock Text="▶" FontSize="10" />
+                                                </Button>
+
+                                                <Button Classes="secondary"
+                                                        Command="{Binding NavigateLastRecordCommand}"
+                                                        IsEnabled="{Binding CanNavigateNext}"
+                                                        Padding="8,4"
+                                                        Height="28"
+                                                        ToolTip.Tip="Último registro">
+                                                    <TextBlock Text="⏭" FontSize="10" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+
+                                <!-- FORMULARIO: SENDERISTA -->
+                                <StackPanel Spacing="16"
+                                            IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Senderistas}}">
+
+                                    <!-- SECCIÓN 1: DATOS DEL PERFIL (SOLO LECTURA) -->
+                                    <Border Background="#101726"
+                                            BorderBrush="#1E293B"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="14">
+                                        <StackPanel Spacing="10">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="👤" FontSize="14" />
+                                                <TextBlock Text="Datos Registrados del Senderista (Solo Lectura)"
+                                                           FontWeight="SemiBold" FontSize="13" Foreground="#94A3B8" />
+                                            </StackPanel>
+
+                                            <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto" Margin="0,4,0,0">
+                                                <!-- Renglón 1, Columna 0: Correo Electrónico (Mail) -->
+                                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12" Spacing="4">
+                                                    <TextBlock Text="Correo Electrónico (Mail / Clave)" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.Email}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Background="#151E2E"
+                                                             Foreground="#94A3B8"
+                                                             BorderBrush="#253248" />
+                                                </StackPanel>
+
+                                                <!-- Renglón 1, Columna 1: Teléfono -->
+                                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="6,0,6,12" Spacing="4">
+                                                    <TextBlock Text="Teléfono" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.Telefono}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Background="#151E2E"
+                                                             Foreground="#94A3B8"
+                                                             BorderBrush="#253248" />
+                                                </StackPanel>
+
+                                                <!-- Renglón 1, Columna 2: Nombre Completo -->
+                                                <StackPanel Grid.Row="0" Grid.Column="2" Margin="8,0,0,12" Spacing="4">
+                                                    <TextBlock Text="Nombre Completo" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.Nombre}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Background="#151E2E"
+                                                             Foreground="#94A3B8"
+                                                             BorderBrush="#253248" />
+                                                </StackPanel>
+
+                                                <!-- Renglón 2, Columna 0: Fecha de Nacimiento -->
+                                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,12" Spacing="4">
+                                                    <TextBlock Text="Fecha de Nacimiento" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.FechaNacimiento}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Background="#151E2E"
+                                                             Foreground="#94A3B8"
+                                                             BorderBrush="#253248" />
+                                                </StackPanel>
+
+                                                <!-- Renglón 2, Columna 1: Sexo -->
+                                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="6,0,6,12" Spacing="4">
+                                                    <TextBlock Text="Sexo" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.Sexo}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Background="#151E2E"
+                                                             Foreground="#94A3B8"
+                                                             BorderBrush="#253248" />
+                                                </StackPanel>
+
+                                                <!-- Renglón 2, Columna 2: Nivel de Senderismo -->
+                                                <StackPanel Grid.Row="1" Grid.Column="2" Margin="8,0,0,12" Spacing="4">
+                                                    <TextBlock Text="Nivel de Senderismo" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.NivelSenderista}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Background="#151E2E"
+                                                             Foreground="#94A3B8"
+                                                             BorderBrush="#253248" />
+                                                </StackPanel>
+
+                                                <!-- Renglón 3, Columna 0: Agrupación Registrada (ID) -->
+                                                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,0" Spacing="4">
+                                                    <TextBlock Text="ID Agrupación Registrada" FontWeight="Medium" FontSize="12" Foreground="#38BDF8" />
+                                                    <TextBox Text="{Binding FormSenderista.IdAgrupacion}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Background="#151E2E"
+                                                             Foreground="#38BDF8"
+                                                             BorderBrush="#0284C7" />
+                                                </StackPanel>
+
+                                                <!-- Renglón 3, Columna 1: Avisar en Emergencia -->
+                                                <StackPanel Grid.Row="2" Grid.Column="1" Margin="6,0,6,0" Spacing="4">
+                                                    <TextBlock Text="Avisar en Emergencia" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.AQuienesAvisar}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Background="#151E2E"
+                                                             Foreground="#94A3B8"
+                                                             BorderBrush="#253248" />
+                                                </StackPanel>
+
+                                                <!-- Renglón 3, Columna 2: Teléfono Emergencia -->
+                                                <StackPanel Grid.Row="2" Grid.Column="2" Margin="8,0,0,0" Spacing="4">
+                                                    <TextBlock Text="Tel. Contacto Emergencia" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.AQuienAvisarTelefono1}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Background="#151E2E"
+                                                             Foreground="#94A3B8"
+                                                             BorderBrush="#253248" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- SECCIÓN 2: PARÁMETROS EDITABLES (ROL, BLOQUEO, MÍNIMA DISTANCIA) -->
+                                    <Border Background="#162235"
+                                            BorderBrush="#2563EB"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="14">
+                                        <StackPanel Spacing="12">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="✏" Foreground="#38BDF8" FontWeight="Bold" FontSize="14" />
+                                                <TextBlock Text="Parámetros Modificables por el Administrador"
+                                                           FontWeight="SemiBold" FontSize="13" Foreground="#38BDF8" />
+                                            </StackPanel>
+
+                                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+                                                <!-- Fila 0, Col 0: Rol (Dropdown / ComboBox) -->
+                                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12" Spacing="4">
+                                                    <TextBlock Text="Rol en el Sistema (Permisos)" FontWeight="Medium" FontSize="12" Foreground="#E2E8F0" />
+                                                    <ComboBox ItemsSource="{Binding AvailableRoles}"
+                                                              SelectedItem="{Binding SelectedRoleOption, Mode=TwoWay}"
+                                                              HorizontalAlignment="Stretch" />
+                                                </StackPanel>
+
+                                                <!-- Fila 0, Col 1: Agrupación Asignada -->
+                                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,12" Spacing="4">
+                                                    <TextBlock Text="Agrupación Asignada" FontWeight="Medium" FontSize="12" Foreground="#E2E8F0" />
+                                                    <ComboBox ItemsSource="{Binding AvailableAgrupaciones}"
+                                                              SelectedItem="{Binding SelectedFormAgrupacion, Mode=TwoWay}"
+                                                              HorizontalAlignment="Stretch">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding Nombre}" />
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                </StackPanel>
+
+                                                <!-- Fila 1, Col 0: Mínima Distancia (km) -->
+                                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0" Spacing="4">
+                                                    <TextBlock Text="Mínima Distancia (Kilómetros)" FontWeight="Medium" FontSize="12" Foreground="#E2E8F0" />
+                                                    <TextBox Text="{Binding FormSenderista.MinimoLongitud, Mode=TwoWay}"
+                                                              Watermark="Ej. 4, 8, 15 (kilómetros)" />
+                                                </StackPanel>
+
+                                                <!-- Fila 1, Col 1: Bloquear Usuario -->
+                                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,0" Spacing="4" VerticalAlignment="Center">
+                                                    <TextBlock Text="Estado de Acceso" FontWeight="Medium" FontSize="12" Foreground="#E2E8F0" />
+                                                    <CheckBox IsChecked="{Binding FormSenderista.Bloqueado, Mode=TwoWay}"
+                                                              Content="Bloquear usuario"
+                                                              FontWeight="SemiBold"
+                                                              Foreground="#F87171"
+                                                              Height="32"
+                                                              VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- FORMULARIO: RUTA -->
+                                <StackPanel Spacing="12"
+                                            IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Rutas}}">
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0">
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="ID Ruta (Clave Primaria)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRuta.Id, Mode=TwoWay}" IsEnabled="{Binding IsNewRecord}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Nombre de la Ruta" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRuta.Nombre, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Distancia GPS (km)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRuta.DistanciaGps, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Fecha" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRuta.Fecha, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Dificultad" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRuta.Dificultad, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Agrupación" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRuta.Agrupacion, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Email Creador" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRuta.EmailCreador, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="1" Margin="8,22,0,10">
+                                            <CheckBox IsChecked="{Binding FormRuta.Publico, Mode=TwoWay}" Content="Ruta Pública" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Descripción de la Ruta" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                        <TextBox Text="{Binding FormRuta.Descripcion, Mode=TwoWay}"
+                                                 AcceptsReturn="True"
+                                                 Height="70" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- FORMULARIO: AGRUPACION -->
+                                <StackPanel Spacing="12"
+                                            IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Agrupaciones}}">
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0">
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="ID Agrupación" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.IdAgrupacion, Mode=TwoWay}" IsEnabled="{Binding IsNewRecord}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Nombre" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.Nombre, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Ciudad" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.Ciudad, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Contacto" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.Contacto, Mode=TwoWay}" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <StackPanel Spacing="4" Margin="0,0,0,10">
+                                        <TextBlock Text="Clave (Correos de Administradores con Rol 'A')" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                        <TextBox Text="{Binding FormAgrupacion.Clave, Mode=TwoWay}" Watermark="correo1@dominio.com, correo2@dominio.com" />
+                                    </StackPanel>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Descripción" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                        <TextBox Text="{Binding FormAgrupacion.Descripcion, Mode=TwoWay}" AcceptsReturn="True" Height="70" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- FORMULARIO: INVITACION -->
+                                <StackPanel Spacing="12"
+                                            IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Invitaciones}}">
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" Margin="0">
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="ID Invitación" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormInvitacion.IdInvitacion, Mode=TwoWay}" IsEnabled="{Binding IsNewRecord}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Título de la Salida" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormInvitacion.Titulo, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="ID Ruta Asociada" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormInvitacion.IdRuta, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Fecha y Hora de Salida" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormInvitacion.FechaSalida, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Punto de Encuentro" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormInvitacion.PuntoEncuentro, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Estado" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormInvitacion.Estado, Mode=TwoWay}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- FORMULARIO: PARTICIPANTE -->
+                                <StackPanel Spacing="12"
+                                            IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Participantes}}">
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0">
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="ID Invitación" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormParticipante.IdInvitacion, Mode=TwoWay}" IsEnabled="{Binding IsNewRecord}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Email Senderista" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormParticipante.EmailSenderista, Mode=TwoWay}" IsEnabled="{Binding IsNewRecord}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Estado (Inscrito, Confirmado...)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormParticipante.Estado, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Fecha de Registro" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormParticipante.FechaRegistro, Mode=TwoWay}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- FORMULARIO: FRASE DIFICULTAD -->
+                                <StackPanel Spacing="12"
+                                            IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.FrasesDificultad}}">
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0">
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="ID Frase (Clave Primaria)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormFraseDificultad.Id, Mode=TwoWay}" IsEnabled="{Binding IsNewRecord}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Nivel de Dificultad (Fácil, Moderada, Difícil, Extrema)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormFraseDificultad.Dificultad, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Autor / Fuente" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormFraseDificultad.Autor, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,22,0,10">
+                                            <CheckBox IsChecked="{Binding FormFraseDificultad.Activa, Mode=TwoWay}" Content="Frase Activa" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Frase Motivacional o Descriptiva" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                        <TextBox Text="{Binding FormFraseDificultad.Frase, Mode=TwoWay}"
+                                                 AcceptsReturn="True"
+                                                 Height="70" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- FORMULARIO: REQUISITO SENDERISMO -->
+                                <StackPanel Spacing="12"
+                                            IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.RequisitosSenderismo}}">
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0">
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="ID Requisito (Clave Primaria)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRequisitoSenderismo.Id, Mode=TwoWay}" IsEnabled="{Binding IsNewRecord}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Categoría (Equipo Básico, Condición Física, Vestimenta, Seguridad...)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRequisitoSenderismo.Categoria, Mode=TwoWay}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Nombre del Requisito" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormRequisitoSenderismo.Requisito, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,22,0,10" Orientation="Horizontal" Spacing="16">
+                                            <CheckBox IsChecked="{Binding FormRequisitoSenderismo.EsObligatorio, Mode=TwoWay}" Content="Es Obligatorio" />
+                                            <CheckBox IsChecked="{Binding FormRequisitoSenderismo.Activo, Mode=TwoWay}" Content="Activo" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Descripción / Recomendaciones" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                        <TextBox Text="{Binding FormRequisitoSenderismo.Descripcion, Mode=TwoWay}"
+                                                 AcceptsReturn="True"
+                                                 Height="70" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Form Action Buttons -->
+                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,16,0,0">
+                                    <Button Classes="primary"
+                                            Command="{Binding SaveFormCommand}"
+                                            Height="38">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="💾" />
+                                            <TextBlock Text="Guardar Cambios (API + SQLite)" FontWeight="Bold" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Classes="danger"
+                                            Command="{Binding DeleteCurrentFormRecordCommand}"
+                                            Height="38"
+                                            ToolTip.Tip="Eliminar este registro de la base de datos">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="🗑" />
+                                            <TextBlock Text="Eliminar Registro" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Classes="secondary"
+                                            Command="{Binding NewRecordCommand}"
+                                            IsVisible="{Binding CanCreateNew}"
+                                            Height="38">
+                                        <TextBlock Text="Limpiar / Nuevo" />
+                                    </Button>
+
+                                    <Button Classes="secondary"
+                                            Command="{Binding BackToGridCommand}"
+                                            Height="38">
+                                        <TextBlock Text="Cancelar y Volver al Grid" />
+                                    </Button>
+                                </StackPanel>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </Border>
+
+            <!-- RIGHT AREA: MENU DE TABLAS -->
+            <Border Grid.Column="1"
+                    Background="#131B2B"
+                    BorderBrush="#253248"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="14">
+
+                <Grid RowDefinitions="Auto,*,Auto">
+
+                    <!-- Menu Header -->
+                    <StackPanel Grid.Row="0" Margin="0,0,0,14" Spacing="4">
+                        <TextBlock Text="TABLAS DE LA BD"
+                                   FontSize="13"
+                                   FontWeight="Bold"
+                                   Foreground="#F8FAFC"
+                                   LetterSpacing="1.1" />
+                        <TextBlock Text="PostgreSQL Neon / PostgREST"
+                                   FontSize="11"
+                                   Foreground="#64748B" />
+                    </StackPanel>
+
+                    <!-- Table Navigation Buttons -->
+                    <StackPanel Grid.Row="1" Spacing="8">
+
+                        <!-- Senderistas -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Senderistas"
+                                Height="48">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0" Text="👥" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Senderistas" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Usuarios y roles" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SenderistasCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
+                                </Border>
+                            </Grid>
+                        </Button>
+
+                        <!-- Rutas -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Rutas"
+                                Height="48">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0" Text="🗺" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Rutas" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Senderos y distancias" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding RutasCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
+                                </Border>
+                            </Grid>
+                        </Button>
+
+                        <!-- Agrupaciones -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Agrupaciones"
+                                Height="48">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0" Text="🏛" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Agrupaciones" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Clubs y asociaciones" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding AgrupacionesCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
+                                </Border>
+                            </Grid>
+                        </Button>
+
+                        <!-- Invitaciones a Rutas -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Invitaciones"
+                                Height="48">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0" Text="✉" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Invitaciones" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Salidas y convocatorias" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding InvitacionesCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
+                                </Border>
+                            </Grid>
+                        </Button>
+
+                        <!-- Participantes -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Participantes"
+                                Height="48">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0" Text="🎒" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Participantes" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Inscripciones a salidas" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding ParticipantesCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
+                                </Border>
+                            </Grid>
+                        </Button>
+
+                        <!-- Frases Dificultad -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="FrasesDificultad"
+                                Height="48">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0" Text="💬" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Frases Dificultad" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Textos por nivel de reto" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding FrasesDificultadCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
+                                </Border>
+                            </Grid>
+                        </Button>
+
+                        <!-- Requisitos Senderismo -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="RequisitosSenderismo"
+                                Height="48">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0" Text="📋" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Requisitos" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Equipo, ropa y seguridad" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding RequisitosSenderismoCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
+                                </Border>
+                            </Grid>
+                        </Button>
+
+                    </StackPanel>
+
+                    <!-- Bottom System & Cache Info Box -->
+                    <Border Grid.Row="2"
+                            Background="#0B0F19"
+                            BorderBrush="#1E293B"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12,10"
+                            Margin="0,14,0,0">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="⚡ Modo de Funcionamiento" FontWeight="SemiBold" FontSize="11" Foreground="#38BDF8" />
+                            <TextBlock Text="• Caché local SQLite activo" FontSize="10" Foreground="#94A3B8" />
+                            <TextBlock Text="• PostgREST API (Render Cloud)" FontSize="10" Foreground="#94A3B8" />
+                            <TextBlock Text="• Soporta uso con o sin conexión" FontSize="10" Foreground="#10B981" />
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+            </Border>
+
+        </Grid>
+        <!-- End of Row 2 Grid -->
+    </Grid>
+    <!-- End of Main Content Grid -->
+
+        <!-- MODAL DE CONFIRMACIÓN -->
+        <Border Background="#CC070B14"
+                IsVisible="{Binding IsConfirmDialogVisible}">
+            <Border Background="#162235"
+                    BorderBrush="{Binding ConfirmDialogBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="12"
+                    Width="520"
+                    Padding="24"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    BoxShadow="0 14 40 0 #99000000">
+                <StackPanel Spacing="16">
+                    <!-- Icon & Title Header -->
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Border Grid.Column="0" Background="{Binding ConfirmDialogIconBgBrush}" CornerRadius="10" Width="44" Height="44" Margin="0,0,14,0">
+                            <TextBlock Text="{Binding ConfirmDialogIcon}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{Binding ConfirmDialogTitle}"
+                                       FontWeight="Bold"
+                                       FontSize="15"
+                                       Foreground="{Binding ConfirmDialogHeaderBrush}" />
+                            <TextBlock Text="{Binding ConfirmDialogSubtitle}"
+                                       FontSize="11"
+                                       Foreground="{Binding ConfirmDialogSubtitleBrush}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Message Body Box -->
+                    <Border Background="#0F172A"
+                            BorderBrush="#1E293B"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="14">
+                        <TextBlock Text="{Binding ConfirmDialogMessage}"
+                                   TextWrapping="Wrap"
+                                   FontSize="13"
+                                   Foreground="#F1F5F9"
+                                   LineHeight="20" />
+                    </Border>
+
+                    <!-- Action Buttons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,6,0,0">
+                        <Button Classes="secondary"
+                                Command="{Binding CancelDeleteCommand}"
+                                Padding="18,9"
+                                Height="38">
+                            <TextBlock Text="Cancelar" FontWeight="Medium" FontSize="13" />
+                        </Button>
+                        <Button Classes="primary"
+                                IsVisible="{Binding !ConfirmDialogIsDanger}"
+                                Command="{Binding ConfirmDeleteCommand}"
+                                Padding="18,9"
+                                Height="38">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding ConfirmDialogIcon}" />
+                                <TextBlock Text="{Binding ConfirmDialogConfirmText}" FontWeight="Bold" FontSize="13" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="danger"
+                                IsVisible="{Binding ConfirmDialogIsDanger}"
+                                Command="{Binding ConfirmDeleteCommand}"
+                                Padding="18,9"
+                                Height="38">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding ConfirmDialogIcon}" />
+                                <TextBlock Text="{Binding ConfirmDialogConfirmText}" FontWeight="Bold" FontSize="13" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+    </Grid>
+</UserControl>

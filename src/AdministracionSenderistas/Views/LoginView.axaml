@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AdministracionSenderistas.ViewModels"
+             x:Class="AdministracionSenderistas.Views.LoginView"
+             x:DataType="vm:LoginViewModel"
+             Background="#0B0F19">
+
+    <Grid>
+        <!-- Background decorative gradient aura -->
+        <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                Width="550" Height="620"
+                Background="#10B981"
+                Opacity="0.05"
+                CornerRadius="200"
+                IsHitTestVisible="False" />
+
+        <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                Width="460"
+                Background="#161E2E"
+                BorderBrush="#293548"
+                BorderThickness="1"
+                CornerRadius="16"
+                Padding="36">
+
+            <StackPanel Spacing="18">
+
+                <!-- Header & Logo -->
+                <StackPanel HorizontalAlignment="Center" Spacing="6">
+                    <Border Width="56" Height="56"
+                            CornerRadius="28"
+                            Background="#064E3B"
+                            BorderBrush="#10B981"
+                            BorderThickness="2"
+                            HorizontalAlignment="Center">
+                        <TextBlock Text="▲"
+                                   FontSize="26"
+                                   FontWeight="Bold"
+                                   Foreground="#34D399"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+
+                    <TextBlock Text="ADMINISTRACIÓN SENDERISTAS"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="#F8FAFC"
+                               HorizontalAlignment="Center"
+                               LetterSpacing="1.2" />
+
+                    <TextBlock Text="Gestión Centralizada BD Neon &amp; PostgREST"
+                               FontSize="12"
+                               Foreground="#94A3B8"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Error Message Alert -->
+                <Border Background="#450A0A"
+                        BorderBrush="#7F1D1D"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12,10"
+                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="⚠" Foreground="#F87171" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   Foreground="#FECACA"
+                                   FontSize="12"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Success Message Alert -->
+                <Border Background="#064E3B"
+                        BorderBrush="#047857"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12,10"
+                        IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="✔" Foreground="#34D399" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Foreground="#A7F3D0"
+                                   FontSize="12"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Input Fields -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Correo Electrónico"
+                               FontSize="12"
+                               FontWeight="Medium"
+                               Foreground="#CBD5E1" />
+                    <TextBox Text="{Binding Identifier, Mode=TwoWay}" />
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Contraseña"
+                               FontSize="12"
+                               FontWeight="Medium"
+                               Foreground="#CBD5E1" />
+                    <TextBox Text="{Binding Password, Mode=TwoWay}"
+                             PasswordChar="●" />
+                </StackPanel>
+
+                <!-- Actions -->
+                <StackPanel Spacing="10" Margin="0,6,0,0">
+                    <Button Classes="primary"
+                            Command="{Binding LoginCommand}"
+                            IsEnabled="{Binding !IsLoading}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Height="40">
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                            <TextBlock Text="Iniciar Sesión"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Loading Bar -->
+                <ProgressBar IsIndeterminate="True"
+                             IsVisible="{Binding IsLoading}"
+                             Height="3"
+                             Foreground="#10B981"
+                             Background="#1E293B" />
+
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

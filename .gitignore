@@ -1,0 +1,32 @@
+## Build outputs
+**/bin/
+**/obj/
+publish/
+*.exe
+*.dll
+*.pdb
+
+## Local package and tool caches
+.nuget_packages/
+.dotnet_home/
+.vs/
+.idea/
+.vscode/
+
+## SQLite and local DB files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+## OS & Log files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.log
+
+## Antigravity and AI artifacts scratch
+.agents/
+.gemini/

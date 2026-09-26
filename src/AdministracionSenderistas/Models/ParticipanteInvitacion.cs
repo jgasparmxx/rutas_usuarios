@@ -21,6 +21,14 @@ public partial class ParticipanteInvitacion : ObservableObject
         set => SetProperty(ref _emailSenderista, value);
     }
 
+    private string? _telefonoSenderista;
+    [JsonPropertyName("telefono_senderista")]
+    public string? TelefonoSenderista
+    {
+        get => _telefonoSenderista;
+        set => SetProperty(ref _telefonoSenderista, value);
+    }
+
     private string? _estado = "Inscrito"; // Inscrito, Confirmado, Cancelado, Asistio
     [JsonPropertyName("estado")]
     public string? Estado
@@ -41,6 +49,7 @@ public partial class ParticipanteInvitacion : ObservableObject
     {
         IdInvitacion = IdInvitacion,
         EmailSenderista = EmailSenderista,
+        TelefonoSenderista = TelefonoSenderista,
         Estado = Estado,
         FechaRegistro = FechaRegistro
     };

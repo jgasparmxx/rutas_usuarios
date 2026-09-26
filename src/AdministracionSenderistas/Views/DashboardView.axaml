@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AdministracionSenderistas.ViewModels"
+             xmlns:views="using:AdministracionSenderistas.Views"
+             xmlns:models="using:AdministracionSenderistas.Models"
              x:Class="AdministracionSenderistas.Views.DashboardView"
              x:DataType="vm:DashboardViewModel"
              Background="#0B0F19">
@@ -143,16 +145,215 @@
             </Grid>
         </Border>
 
-        <!-- ROW 2: MAIN CONTENT (LEFT: GRID/FORM TABS, RIGHT: MENU TABLAS) -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,260">
+        <!-- ROW 2: MAIN CONTENT (LEFT: MENU TABLAS COLAPSIBLE, RIGHT: GRID/FORM TABS) -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
 
-            <!-- LEFT AREA: TABS (TAB 1: GRID, TAB 2: FORMULARIO) -->
+            <!-- LEFT AREA: MENU DE TABLAS (COLAPSIBLE) -->
             <Border Grid.Column="0"
+                    Width="{Binding SidebarWidth}"
                     Background="#131B2B"
                     BorderBrush="#253248"
                     BorderThickness="1"
                     CornerRadius="10"
-                    Margin="0,0,12,0"
+                    Padding="8,12"
+                    Margin="0,0,12,0">
+
+                <Grid RowDefinitions="Auto,*,Auto">
+
+                    <!-- Header with Toggle Button -->
+                    <Grid Grid.Row="0" Margin="0,0,0,14">
+                        <!-- Expanded Header -->
+                        <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding !IsSidebarCollapsed}">
+                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="4,0,0,0">
+                                <TextBlock Text="TABLAS BD"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="#F8FAFC"
+                                           LetterSpacing="1.1" />
+                                <TextBlock Text="PostgreSQL Neon"
+                                           FontSize="10"
+                                           Foreground="#64748B" />
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Classes="secondary"
+                                    Command="{Binding ToggleSidebarCommand}"
+                                    Padding="6,4"
+                                    Width="30"
+                                    Height="28"
+                                    ToolTip.Tip="Contraer menú lateral">
+                                <TextBlock Text="◀" FontSize="11" FontWeight="Bold" />
+                            </Button>
+                        </Grid>
+
+                        <!-- Collapsed Header -->
+                        <Button Classes="secondary"
+                                Command="{Binding ToggleSidebarCommand}"
+                                Padding="4"
+                                Width="36"
+                                Height="28"
+                                HorizontalAlignment="Center"
+                                IsVisible="{Binding IsSidebarCollapsed}"
+                                ToolTip.Tip="Expandir menú lateral">
+                            <TextBlock Text="▶" FontSize="11" FontWeight="Bold" />
+                        </Button>
+                    </Grid>
+
+                    <!-- Table Navigation Buttons (Sin números de registro, colapsables con tooltip) -->
+                    <StackPanel Grid.Row="1" Spacing="6">
+
+                        <!-- Senderistas -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Senderistas"
+                                Height="44"
+                                Padding="4,4"
+                                ToolTip.Tip="Senderistas (Usuarios y roles)">
+                            <Grid ColumnDefinitions="36,*">
+                                <TextBlock Grid.Column="0" Text="👥" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding !IsSidebarCollapsed}">
+                                    <TextBlock Text="Senderistas" FontWeight="SemiBold" FontSize="12" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Usuarios y roles" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- Rutas -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Rutas"
+                                Height="44"
+                                Padding="4,4"
+                                ToolTip.Tip="Rutas (Senderos y distancias)">
+                            <Grid ColumnDefinitions="36,*">
+                                <TextBlock Grid.Column="0" Text="🗺" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding !IsSidebarCollapsed}">
+                                    <TextBlock Text="Rutas" FontWeight="SemiBold" FontSize="12" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Senderos y distancias" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- Agrupaciones -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Agrupaciones"
+                                Height="44"
+                                Padding="4,4"
+                                ToolTip.Tip="Agrupaciones (Clubs y asociaciones)">
+                            <Grid ColumnDefinitions="36,*">
+                                <TextBlock Grid.Column="0" Text="🏛" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding !IsSidebarCollapsed}">
+                                    <TextBlock Text="Agrupaciones" FontWeight="SemiBold" FontSize="12" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Clubs y asociaciones" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- Invitaciones a Rutas -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Invitaciones"
+                                Height="44"
+                                Padding="4,4"
+                                ToolTip.Tip="Invitaciones (Salidas y convocatorias)">
+                            <Grid ColumnDefinitions="36,*">
+                                <TextBlock Grid.Column="0" Text="✉" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding !IsSidebarCollapsed}">
+                                    <TextBlock Text="Invitaciones" FontWeight="SemiBold" FontSize="12" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Salidas y convocatorias" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- Participantes -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="Participantes"
+                                Height="44"
+                                Padding="4,4"
+                                ToolTip.Tip="Participantes (Inscripciones a salidas)">
+                            <Grid ColumnDefinitions="36,*">
+                                <TextBlock Grid.Column="0" Text="🎒" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding !IsSidebarCollapsed}">
+                                    <TextBlock Text="Participantes" FontWeight="SemiBold" FontSize="12" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Inscripciones a salidas" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- Frases Dificultad -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="FrasesDificultad"
+                                Height="44"
+                                Padding="4,4"
+                                ToolTip.Tip="Frases Dificultad (Textos por nivel de reto)">
+                            <Grid ColumnDefinitions="36,*">
+                                <TextBlock Grid.Column="0" Text="💬" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding !IsSidebarCollapsed}">
+                                    <TextBlock Text="Frases Dificultad" FontWeight="SemiBold" FontSize="12" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Textos por nivel" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- Requisitos Senderismo -->
+                        <Button Classes="secondary"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding SelectTableCommand}"
+                                CommandParameter="RequisitosSenderismo"
+                                Height="44"
+                                Padding="4,4"
+                                ToolTip.Tip="Requisitos (Equipo, ropa y seguridad)">
+                            <Grid ColumnDefinitions="36,*">
+                                <TextBlock Grid.Column="0" Text="📋" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding !IsSidebarCollapsed}">
+                                    <TextBlock Text="Requisitos" FontWeight="SemiBold" FontSize="12" Foreground="#F1F5F9" />
+                                    <TextBlock Text="Equipo y seguridad" FontSize="10" Foreground="#64748B" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                    </StackPanel>
+
+                    <!-- Bottom System & Cache Info Box -->
+                    <Border Grid.Row="2"
+                            Background="#0B0F19"
+                            BorderBrush="#1E293B"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="10,8"
+                            Margin="0,14,0,0"
+                            IsVisible="{Binding !IsSidebarCollapsed}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="⚡ Modo Activo" FontWeight="SemiBold" FontSize="10" Foreground="#38BDF8" />
+                            <TextBlock Text="• Caché SQLite local" FontSize="9" Foreground="#94A3B8" />
+                            <TextBlock Text="• API PostgREST Neon" FontSize="9" Foreground="#94A3B8" />
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+            </Border>
+
+            <!-- RIGHT AREA: TABS (TAB 1: GRID, TAB 2: FORMULARIO) -->
+            <Border Grid.Column="1"
+                    Background="#131B2B"
+                    BorderBrush="#253248"
+                    BorderThickness="1"
+                    CornerRadius="10"
                     ClipToBounds="True">
 
                 <TabControl SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
@@ -201,15 +402,17 @@
 
                                     <Button Classes="secondary"
                                             Command="{Binding EditSelectedCommand}"
-                                            ToolTip.Tip="Ver y editar registro en formulario">
+                                            IsEnabled="{Binding HasSelectedRecord}"
+                                            ToolTip.Tip="Ver y editar registro seleccionado en formulario">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <TextBlock Text="✏" />
-                                            <TextBlock Text="Editar" />
+                                            <TextBlock Text="Ver / Editar" />
                                         </StackPanel>
                                     </Button>
 
                                     <Button Classes="danger"
                                             Command="{Binding DeleteSelectedCommand}"
+                                            IsEnabled="{Binding CanDeleteSelected}"
                                             ToolTip.Tip="Eliminar registro seleccionado">
                                         <StackPanel Orientation="Horizontal" Spacing="4">
                                             <TextBlock Text="🗑" />
@@ -237,6 +440,7 @@
                                 <!-- DATAGRID: SENDERISTAS -->
                                 <DataGrid ItemsSource="{Binding FilteredSenderistas}"
                                           SelectedItem="{Binding SelectedSenderista, Mode=TwoWay}"
+                                          DoubleTapped="OnDataGridDoubleTapped"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
                                           CanUserSortColumns="True"
@@ -258,6 +462,7 @@
                                 <!-- DATAGRID: RUTAS -->
                                 <DataGrid ItemsSource="{Binding FilteredRutas}"
                                           SelectedItem="{Binding SelectedRuta, Mode=TwoWay}"
+                                          DoubleTapped="OnDataGridDoubleTapped"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
                                           CanUserSortColumns="True"
@@ -266,7 +471,7 @@
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="ID Ruta" Binding="{Binding Id}" Width="140" />
                                         <DataGridTextColumn Header="Nombre de la Ruta" Binding="{Binding Nombre}" Width="220" />
-                                        <DataGridTextColumn Header="Distancia (km)" Binding="{Binding DistanciaGps}" Width="110" />
+                                        <DataGridTextColumn Header="Distancia" Binding="{Binding DistanciaKmFormateada}" Width="110" />
                                         <DataGridTextColumn Header="Fecha" Binding="{Binding Fecha}" Width="110" />
                                         <DataGridTextColumn Header="Dificultad" Binding="{Binding Dificultad}" Width="110" />
                                         <DataGridCheckBoxColumn Header="Pública" Binding="{Binding Publico}" Width="90" />
@@ -280,6 +485,7 @@
                                 <!-- DATAGRID: AGRUPACIONES -->
                                 <DataGrid ItemsSource="{Binding FilteredAgrupaciones}"
                                           SelectedItem="{Binding SelectedAgrupacion, Mode=TwoWay}"
+                                          DoubleTapped="OnDataGridDoubleTapped"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
                                           CanUserSortColumns="True"
@@ -298,6 +504,7 @@
                                 <!-- DATAGRID: INVITACIONES -->
                                 <DataGrid ItemsSource="{Binding FilteredInvitaciones}"
                                           SelectedItem="{Binding SelectedInvitacion, Mode=TwoWay}"
+                                          DoubleTapped="OnDataGridDoubleTapped"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
                                           CanUserSortColumns="True"
@@ -319,6 +526,7 @@
                                 <!-- DATAGRID: PARTICIPANTES -->
                                 <DataGrid ItemsSource="{Binding FilteredParticipantes}"
                                           SelectedItem="{Binding SelectedParticipante, Mode=TwoWay}"
+                                          DoubleTapped="OnDataGridDoubleTapped"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
                                           CanUserSortColumns="True"
@@ -335,6 +543,7 @@
                                 <!-- DATAGRID: FRASES DIFICULTAD -->
                                 <DataGrid ItemsSource="{Binding FilteredFrasesDificultad}"
                                           SelectedItem="{Binding SelectedFraseDificultad, Mode=TwoWay}"
+                                          DoubleTapped="OnDataGridDoubleTapped"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
                                           CanUserSortColumns="True"
@@ -352,6 +561,7 @@
                                 <!-- DATAGRID: REQUISITOS SENDERISMO -->
                                 <DataGrid ItemsSource="{Binding FilteredRequisitosSenderismo}"
                                           SelectedItem="{Binding SelectedRequisitoSenderismo, Mode=TwoWay}"
+                                          DoubleTapped="OnDataGridDoubleTapped"
                                           AutoGenerateColumns="False"
                                           IsReadOnly="True"
                                           CanUserSortColumns="True"
@@ -409,10 +619,11 @@
                     <!-- ============================================== -->
                     <TabItem Header="✏ Formulario de Detalle y Edición"
                              FontSize="13"
-                             FontWeight="SemiBold">
+                             FontWeight="SemiBold"
+                             IsEnabled="{Binding HasSelectedRecord}">
 
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
-                            <StackPanel Spacing="16" MaxWidth="980" HorizontalAlignment="Left">
+                            <StackPanel Spacing="16" HorizontalAlignment="Stretch">
 
                                 <!-- Form Navigation Bar & Header (Discreta, integrada y elegante para todas las tablas) -->
                                 <Border Background="#131B2B"
@@ -437,7 +648,13 @@
                                             <Border Width="1" Height="18" Background="#334155" VerticalAlignment="Center" Margin="2,0" />
 
                                             <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="Detalle y Edición" FontSize="13" FontWeight="SemiBold" Foreground="#F8FAFC" />
+                                                <TextBlock Text="{Binding FormTitle}"
+                                                           FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#F8FAFC"
+                                                           MaxWidth="500"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip.Tip="{Binding FormTitle}" />
                                                 <TextBlock Text="Sincronización API + Caché SQLite" FontSize="10" Foreground="#64748B" />
                                             </StackPanel>
                                         </StackPanel>
@@ -504,7 +721,7 @@
                                 </Border>
 
                                 <!-- FORMULARIO: SENDERISTA -->
-                                <StackPanel Spacing="16"
+                                <StackPanel Spacing="14"
                                             IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Senderistas}}">
 
                                     <!-- SECCIÓN 1: DATOS DEL PERFIL (SOLO LECTURA) -->
@@ -512,142 +729,140 @@
                                             BorderBrush="#1E293B"
                                             BorderThickness="1"
                                             CornerRadius="8"
-                                            Padding="14">
+                                            Padding="14,12">
                                         <StackPanel Spacing="10">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <TextBlock Text="👤" FontSize="14" />
                                                 <TextBlock Text="Datos Registrados del Senderista (Solo Lectura)"
-                                                           FontWeight="SemiBold" FontSize="13" Foreground="#94A3B8" />
+                                                           FontWeight="SemiBold" FontSize="12" Foreground="#94A3B8" />
                                             </StackPanel>
 
-                                            <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto" Margin="0,4,0,0">
-                                                <!-- Renglón 1, Columna 0: Correo Electrónico (Mail) -->
-                                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12" Spacing="4">
-                                                    <TextBlock Text="Correo Electrónico (Mail / Clave)" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                            <!-- Grid balanceado de 12 columnas: Correo y Nombre más amplios y destacados -->
+                                            <Grid ColumnDefinitions="*,*,*,*,*,*,*,*,*,*,*,*" RowDefinitions="Auto,Auto" Margin="0,2,0,0">
+
+                                                <!-- Fila 0, Col 0 a 4 (5 col): Correo (Mail / Clave) -->
+                                                <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,0,6,10" Spacing="4">
+                                                    <TextBlock Text="Correo Electrónico (Mail / Clave)" FontWeight="SemiBold" FontSize="11" Foreground="#94A3B8" />
                                                     <TextBox Text="{Binding FormSenderista.Email}"
                                                              IsReadOnly="True"
                                                              Focusable="False"
+                                                             Height="34"
+                                                             FontSize="13"
+                                                             FontWeight="SemiBold"
                                                              Background="#151E2E"
-                                                             Foreground="#94A3B8"
+                                                             Foreground="#F1F5F9"
                                                              BorderBrush="#253248" />
                                                 </StackPanel>
 
-                                                <!-- Renglón 1, Columna 1: Teléfono -->
-                                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="6,0,6,12" Spacing="4">
-                                                    <TextBlock Text="Teléfono" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
-                                                    <TextBox Text="{Binding FormSenderista.Telefono}"
-                                                             IsReadOnly="True"
-                                                             Focusable="False"
-                                                             Background="#151E2E"
-                                                             Foreground="#94A3B8"
-                                                             BorderBrush="#253248" />
-                                                </StackPanel>
-
-                                                <!-- Renglón 1, Columna 2: Nombre Completo -->
-                                                <StackPanel Grid.Row="0" Grid.Column="2" Margin="8,0,0,12" Spacing="4">
-                                                    <TextBlock Text="Nombre Completo" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
+                                                <!-- Fila 0, Col 5 a 9 (5 col): Nombre Completo -->
+                                                <StackPanel Grid.Row="0" Grid.Column="5" Grid.ColumnSpan="5" Margin="4,0,6,10" Spacing="4">
+                                                    <TextBlock Text="Nombre Completo" FontWeight="SemiBold" FontSize="11" Foreground="#94A3B8" />
                                                     <TextBox Text="{Binding FormSenderista.Nombre}"
                                                              IsReadOnly="True"
                                                              Focusable="False"
+                                                             Height="34"
+                                                             FontSize="13"
+                                                             FontWeight="SemiBold"
                                                              Background="#151E2E"
-                                                             Foreground="#94A3B8"
+                                                             Foreground="#F1F5F9"
                                                              BorderBrush="#253248" />
                                                 </StackPanel>
 
-                                                <!-- Renglón 2, Columna 0: Fecha de Nacimiento -->
-                                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,12" Spacing="4">
-                                                    <TextBlock Text="Fecha de Nacimiento" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
-                                                    <TextBox Text="{Binding FormSenderista.FechaNacimiento}"
+                                                <!-- Fila 0, Col 10 a 11 (2 col): Teléfono -->
+                                                <StackPanel Grid.Row="0" Grid.Column="10" Grid.ColumnSpan="2" Margin="4,0,0,10" Spacing="4">
+                                                    <TextBlock Text="Teléfono" FontWeight="Medium" FontSize="11" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.Telefono}"
                                                              IsReadOnly="True"
                                                              Focusable="False"
+                                                             Height="34"
+                                                             FontSize="12"
                                                              Background="#151E2E"
                                                              Foreground="#94A3B8"
                                                              BorderBrush="#253248" />
                                                 </StackPanel>
 
-                                                <!-- Renglón 2, Columna 1: Sexo -->
-                                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="6,0,6,12" Spacing="4">
-                                                    <TextBlock Text="Sexo" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
-                                                    <TextBox Text="{Binding FormSenderista.Sexo}"
-                                                             IsReadOnly="True"
-                                                             Focusable="False"
-                                                             Background="#151E2E"
-                                                             Foreground="#94A3B8"
-                                                             BorderBrush="#253248" />
-                                                </StackPanel>
-
-                                                <!-- Renglón 2, Columna 2: Nivel de Senderismo -->
-                                                <StackPanel Grid.Row="1" Grid.Column="2" Margin="8,0,0,12" Spacing="4">
-                                                    <TextBlock Text="Nivel de Senderismo" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
-                                                    <TextBox Text="{Binding FormSenderista.NivelSenderista}"
-                                                             IsReadOnly="True"
-                                                             Focusable="False"
-                                                             Background="#151E2E"
-                                                             Foreground="#94A3B8"
-                                                             BorderBrush="#253248" />
-                                                </StackPanel>
-
-                                                <!-- Renglón 3, Columna 0: Agrupación Registrada (ID) -->
-                                                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,0" Spacing="4">
-                                                    <TextBlock Text="ID Agrupación Registrada" FontWeight="Medium" FontSize="12" Foreground="#38BDF8" />
+                                                <!-- Fila 1, Col 0 a 2 (3 col): ID Agrupación Registrada -->
+                                                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,6,0" Spacing="4">
+                                                    <TextBlock Text="ID Agrupación Registrada" FontWeight="Medium" FontSize="11" Foreground="#38BDF8" />
                                                     <TextBox Text="{Binding FormSenderista.IdAgrupacion}"
                                                              IsReadOnly="True"
                                                              Focusable="False"
+                                                             Height="32"
+                                                             FontSize="12"
                                                              Background="#151E2E"
                                                              Foreground="#38BDF8"
                                                              BorderBrush="#0284C7" />
                                                 </StackPanel>
 
-                                                <!-- Renglón 3, Columna 1: Avisar en Emergencia -->
-                                                <StackPanel Grid.Row="2" Grid.Column="1" Margin="6,0,6,0" Spacing="4">
-                                                    <TextBlock Text="Avisar en Emergencia" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
-                                                    <TextBox Text="{Binding FormSenderista.AQuienesAvisar}"
+                                                <!-- Fila 1, Col 3 a 5 (3 col): Nivel de Senderismo -->
+                                                <StackPanel Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="3" Margin="4,0,6,0" Spacing="4">
+                                                    <TextBlock Text="Nivel de Senderismo" FontWeight="Medium" FontSize="11" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.NivelSenderista}"
                                                              IsReadOnly="True"
                                                              Focusable="False"
+                                                             Height="32"
+                                                             FontSize="12"
                                                              Background="#151E2E"
                                                              Foreground="#94A3B8"
                                                              BorderBrush="#253248" />
                                                 </StackPanel>
 
-                                                <!-- Renglón 3, Columna 2: Teléfono Emergencia -->
-                                                <StackPanel Grid.Row="2" Grid.Column="2" Margin="8,0,0,0" Spacing="4">
-                                                    <TextBlock Text="Tel. Contacto Emergencia" FontWeight="Medium" FontSize="12" Foreground="#64748B" />
-                                                    <TextBox Text="{Binding FormSenderista.AQuienAvisarTelefono1}"
+                                                <!-- Fila 1, Col 6 a 8 (3 col): Fecha de Nacimiento -->
+                                                <StackPanel Grid.Row="1" Grid.Column="6" Grid.ColumnSpan="3" Margin="4,0,6,0" Spacing="4">
+                                                    <TextBlock Text="Fecha de Nacimiento" FontWeight="Medium" FontSize="11" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.FechaNacimiento}"
                                                              IsReadOnly="True"
                                                              Focusable="False"
+                                                             Height="32"
+                                                             FontSize="12"
                                                              Background="#151E2E"
                                                              Foreground="#94A3B8"
                                                              BorderBrush="#253248" />
                                                 </StackPanel>
+
+                                                <!-- Fila 1, Col 9 a 11 (3 col): Sexo -->
+                                                <StackPanel Grid.Row="1" Grid.Column="9" Grid.ColumnSpan="3" Margin="4,0,0,0" Spacing="4">
+                                                    <TextBlock Text="Sexo" FontWeight="Medium" FontSize="11" Foreground="#64748B" />
+                                                    <TextBox Text="{Binding FormSenderista.Sexo}"
+                                                             IsReadOnly="True"
+                                                             Focusable="False"
+                                                             Height="32"
+                                                             FontSize="12"
+                                                             Background="#151E2E"
+                                                             Foreground="#94A3B8"
+                                                             BorderBrush="#253248" />
+                                                </StackPanel>
+
                                             </Grid>
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- SECCIÓN 2: PARÁMETROS EDITABLES (ROL, BLOQUEO, MÍNIMA DISTANCIA) -->
+                                    <!-- SECCIÓN 2: PARÁMETROS EDITABLES (ROL, BLOQUEO, MÍNIMA DISTANCIA) EN 4 COLUMNAS -->
                                     <Border Background="#162235"
                                             BorderBrush="#2563EB"
                                             BorderThickness="1"
                                             CornerRadius="8"
-                                            Padding="14">
-                                        <StackPanel Spacing="12">
+                                            Padding="14,10">
+                                        <StackPanel Spacing="8">
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <TextBlock Text="✏" Foreground="#38BDF8" FontWeight="Bold" FontSize="14" />
                                                 <TextBlock Text="Parámetros Modificables por el Administrador"
-                                                           FontWeight="SemiBold" FontSize="13" Foreground="#38BDF8" />
+                                                           FontWeight="SemiBold" FontSize="12" Foreground="#38BDF8" />
                                             </StackPanel>
 
-                                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
-                                                <!-- Fila 0, Col 0: Rol (Dropdown / ComboBox) -->
-                                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12" Spacing="4">
-                                                    <TextBlock Text="Rol en el Sistema (Permisos)" FontWeight="Medium" FontSize="12" Foreground="#E2E8F0" />
+                                            <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto" Margin="0,2,0,0">
+                                                <!-- Col 0: Rol (Dropdown / ComboBox) -->
+                                                <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="3">
+                                                    <TextBlock Text="Rol en el Sistema (Permisos)" FontWeight="Medium" FontSize="11" Foreground="#E2E8F0" />
                                                     <ComboBox ItemsSource="{Binding AvailableRoles}"
                                                               SelectedItem="{Binding SelectedRoleOption, Mode=TwoWay}"
+                                                              IsEnabled="{Binding CanEditFormSenderistaRole}"
                                                               HorizontalAlignment="Stretch" />
                                                 </StackPanel>
 
-                                                <!-- Fila 0, Col 1: Agrupación Asignada -->
-                                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,12" Spacing="4">
-                                                    <TextBlock Text="Agrupación Asignada" FontWeight="Medium" FontSize="12" Foreground="#E2E8F0" />
+                                                <!-- Col 1: Agrupación Asignada -->
+                                                <StackPanel Grid.Column="1" Margin="4,0,6,0" Spacing="3">
+                                                    <TextBlock Text="Agrupación Asignada" FontWeight="Medium" FontSize="11" Foreground="#E2E8F0" />
                                                     <ComboBox ItemsSource="{Binding AvailableAgrupaciones}"
                                                               SelectedItem="{Binding SelectedFormAgrupacion, Mode=TwoWay}"
                                                               HorizontalAlignment="Stretch">
@@ -659,17 +874,18 @@
                                                     </ComboBox>
                                                 </StackPanel>
 
-                                                <!-- Fila 1, Col 0: Mínima Distancia (km) -->
-                                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0" Spacing="4">
-                                                    <TextBlock Text="Mínima Distancia (Kilómetros)" FontWeight="Medium" FontSize="12" Foreground="#E2E8F0" />
+                                                <!-- Col 2: Mínima Distancia (km) -->
+                                                <StackPanel Grid.Column="2" Margin="4,0,6,0" Spacing="3">
+                                                    <TextBlock Text="Mínima Distancia (Kilómetros)" FontWeight="Medium" FontSize="11" Foreground="#E2E8F0" />
                                                     <TextBox Text="{Binding FormSenderista.MinimoLongitud, Mode=TwoWay}"
-                                                              Watermark="Ej. 4, 8, 15 (kilómetros)" />
+                                                             Watermark="Ej. 4, 8, 15 (km)" />
                                                 </StackPanel>
 
-                                                <!-- Fila 1, Col 1: Bloquear Usuario -->
-                                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,0" Spacing="4" VerticalAlignment="Center">
-                                                    <TextBlock Text="Estado de Acceso" FontWeight="Medium" FontSize="12" Foreground="#E2E8F0" />
+                                                <!-- Col 3: Bloquear Usuario -->
+                                                <StackPanel Grid.Column="3" Margin="4,0,0,0" Spacing="3" VerticalAlignment="Center">
+                                                    <TextBlock Text="Estado de Acceso" FontWeight="Medium" FontSize="11" Foreground="#E2E8F0" />
                                                     <CheckBox IsChecked="{Binding FormSenderista.Bloqueado, Mode=TwoWay}"
+                                                              IsEnabled="{Binding CanEditFormSenderistaBloqueado}"
                                                               Content="Bloquear usuario"
                                                               FontWeight="SemiBold"
                                                               Foreground="#F87171"
@@ -677,57 +893,506 @@
                                                               VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Grid>
+
+                                            <!-- Aviso de restricción de seguridad (si aplica) -->
+                                            <TextBlock Text="{Binding SenderistaRoleRestrictionMessage}"
+                                                       Foreground="#F59E0B"
+                                                       FontSize="11"
+                                                       IsVisible="{Binding SenderistaRoleRestrictionMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                       Margin="0,4,0,0" />
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
 
-                                <!-- FORMULARIO: RUTA -->
-                                <StackPanel Spacing="12"
-                                            IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Rutas}}">
-                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0">
-                                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
-                                            <TextBlock Text="ID Ruta (Clave Primaria)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                            <TextBox Text="{Binding FormRuta.Id, Mode=TwoWay}" IsEnabled="{Binding IsNewRecord}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
-                                            <TextBlock Text="Nombre de la Ruta" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                            <TextBox Text="{Binding FormRuta.Nombre, Mode=TwoWay}" />
-                                        </StackPanel>
+                                <!-- FORMULARIO: RUTA (LAYOUT DE 2 COLUMNAS: DETALLES COLAPSABLES DE 250px Y MAPA LIBRE EXPANDIDO) -->
+                                <Grid ColumnDefinitions="Auto,*"
+                                      Margin="0"
+                                      IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Rutas}}">
 
-                                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
-                                            <TextBlock Text="Distancia GPS (km)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                            <TextBox Text="{Binding FormRuta.DistanciaGps, Mode=TwoWay}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
-                                            <TextBlock Text="Fecha" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                            <TextBox Text="{Binding FormRuta.Fecha, Mode=TwoWay}" />
-                                        </StackPanel>
+                                    <!-- COLUMNA 0: DETALLES DE LA RUTA (ANCHO REDUCIDO A LA MITAD: 250px / COLAPSABLE) -->
+                                    <Panel Grid.Column="0">
+                                        <!-- TIRA VERTICAL CUANDO ESTÁ OCULTO -->
+                                        <Button Command="{Binding ToggleRouteDetailsCommand}"
+                                                Classes="secondary"
+                                                Width="32"
+                                                Margin="0,0,10,0"
+                                                VerticalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                ToolTip.Tip="Mostrar ficha técnica de la ruta"
+                                                IsVisible="{Binding !IsRouteDetailsVisible}">
+                                            <TextBlock Text="▶&#x0a;F&#x0a;I&#x0a;C&#x0a;H&#x0a;A"
+                                                       FontSize="10"
+                                                       FontWeight="Bold"
+                                                       Foreground="#38BDF8"
+                                                       TextAlignment="Center" />
+                                        </Button>
 
-                                        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
-                                            <TextBlock Text="Dificultad" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                            <TextBox Text="{Binding FormRuta.Dificultad, Mode=TwoWay}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
-                                            <TextBlock Text="Agrupación" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                            <TextBox Text="{Binding FormRuta.Agrupacion, Mode=TwoWay}" />
-                                        </StackPanel>
+                                        <!-- PANEL DE FICHA TÉCNICA (250px) -->
+                                        <Border Width="250"
+                                                Margin="0,0,12,0"
+                                                IsVisible="{Binding IsRouteDetailsVisible}">
+                                            <StackPanel Spacing="10">
 
-                                        <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
-                                            <TextBlock Text="Email Creador" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                            <TextBox Text="{Binding FormRuta.EmailCreador, Mode=TwoWay}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Row="3" Grid.Column="1" Margin="8,22,0,10">
-                                            <CheckBox IsChecked="{Binding FormRuta.Publico, Mode=TwoWay}" Content="Ruta Pública" />
-                                        </StackPanel>
-                                    </Grid>
+                                                <!-- Header de Ficha con Botón de Ocultar -->
+                                                <Border Background="#1E293B"
+                                                        BorderBrush="#38BDF8"
+                                                        BorderThickness="1"
+                                                        CornerRadius="6"
+                                                        Padding="10,6">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                            <TextBlock Text="🔒" FontSize="13" VerticalAlignment="Center" />
+                                                            <TextBlock Text="Ficha de Ruta" FontWeight="Bold" FontSize="11" Foreground="#38BDF8" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                        <Button Grid.Column="1"
+                                                                Command="{Binding ToggleRouteDetailsCommand}"
+                                                                Padding="6,3"
+                                                                Classes="secondary"
+                                                                ToolTip.Tip="Ocultar ficha para maximizar el mapa">
+                                                            <TextBlock Text="◀ Ocultar" FontSize="10" />
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
 
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Descripción de la Ruta" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                        <TextBox Text="{Binding FormRuta.Descripcion, Mode=TwoWay}"
-                                                 AcceptsReturn="True"
-                                                 Height="70" />
-                                    </StackPanel>
-                                </StackPanel>
+                                                <!-- 1. CAMPO MODIFICABLE: AGRUPACIÓN Y ACCIONES RÁPIDAS -->
+                                                <Border Background="#064E3B"
+                                                        BorderBrush="#10B981"
+                                                        BorderThickness="1.5"
+                                                        CornerRadius="6"
+                                                        Padding="10,8">
+                                                    <StackPanel Spacing="6">
+                                                        <Grid ColumnDefinitions="*,Auto">
+                                                            <TextBlock Grid.Column="0" Text="Agrupación" FontWeight="Bold" FontSize="11" Foreground="#34D399" />
+                                                            <TextBlock Grid.Column="1" Text="Editable ✏" FontSize="10" Foreground="#A7F3D0" />
+                                                        </Grid>
+                                                        <ComboBox ItemsSource="{Binding AvailableAgrupaciones}"
+                                                                  SelectedItem="{Binding SelectedFormRutaAgrupacion, Mode=TwoWay}"
+                                                                  HorizontalAlignment="Stretch"
+                                                                  Height="26"
+                                                                  FontSize="10">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate x:DataType="models:Agrupacion">
+                                                                    <TextBlock Text="{Binding Nombre}" FontSize="10" />
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                        <TextBox Text="{Binding FormRuta.Agrupacion, Mode=TwoWay}"
+                                                                 Watermark="ID Agrupación..."
+                                                                 Background="#0A1E17"
+                                                                 BorderBrush="#059669"
+                                                                 Foreground="#FFFFFF"
+                                                                 FontSize="10"
+                                                                 Height="24"
+                                                                 Padding="6,2" />
+
+                                                        <!-- Botones de Acción Inmediata -->
+                                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
+                                                            <Button Grid.Column="0"
+                                                                    Classes="primary"
+                                                                    Command="{Binding SaveFormCommand}"
+                                                                    HorizontalAlignment="Stretch"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    Margin="0,0,4,0"
+                                                                    Height="28"
+                                                                    Padding="4,0">
+                                                                <TextBlock Text="💾 Guardar" FontWeight="SemiBold" FontSize="10" />
+                                                            </Button>
+
+                                                            <Button Grid.Column="1"
+                                                                    Classes="danger"
+                                                                    Command="{Binding DeleteCurrentFormRecordCommand}"
+                                                                    IsEnabled="{Binding CanDeleteFormRecord}"
+                                                                    Height="28"
+                                                                    Padding="6,0"
+                                                                    ToolTip.Tip="Eliminar esta ruta">
+                                                                <TextBlock Text="🗑 Eliminar" FontSize="10" />
+                                                            </Button>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- 2. DATOS TÉCNICOS COMPACTOS (Solo Lectura) -->
+                                                <Border Background="#101726"
+                                                        BorderBrush="#1E293B"
+                                                        BorderThickness="1"
+                                                        CornerRadius="6"
+                                                        Padding="10,8">
+                                                    <StackPanel Spacing="6">
+                                                        <TextBlock Text="Métricas Técnicas (Solo Lectura)" FontWeight="SemiBold" FontSize="10" Foreground="#94A3B8" />
+
+                                                        <!-- ID y Código -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,3,0" Spacing="1">
+                                                                <TextBlock Text="ID Ruta" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.Id, Mode=OneWay}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" Margin="3,0,0,0" Spacing="1">
+                                                                <TextBlock Text="Código" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.Codigo, Mode=OneWay}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Dificultad y Pública -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,3,0" Spacing="1">
+                                                                <TextBlock Text="Dificultad" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.Dificultad, Mode=OneWay}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" Margin="3,0,0,0" VerticalAlignment="Center">
+                                                                <CheckBox IsChecked="{Binding FormRuta.Publico, Mode=OneWay}"
+                                                                          IsEnabled="False"
+                                                                          Content="Pública"
+                                                                          FontSize="10"
+                                                                          Foreground="#CBD5E1"
+                                                                          Margin="0,8,0,0" />
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Distancia GPS (3 dec) y Duración -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,3,0" Spacing="1">
+                                                                <TextBlock Text="Distancia GPS" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.DistanciaKmFormateada, Mode=OneWay}" IsReadOnly="True" Background="#0B0F19" Foreground="#38BDF8" FontWeight="SemiBold" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" Margin="3,0,0,0" Spacing="1">
+                                                                <TextBlock Text="Duración" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.DuracionFormateada, Mode=OneWay}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Conectividad % y Beacons -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,3,0" Spacing="1">
+                                                                <TextBlock Text="Señal / Conect." FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.Conectividad, Mode=OneWay, StringFormat='{}{0:F1} %'}" IsReadOnly="True" Background="#0B0F19" Foreground="#34D399" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" Margin="3,0,0,0" Spacing="1">
+                                                                <TextBlock Text="Beacons (m)" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.DistanciaBeacons, Mode=OneWay, StringFormat='{}{0} m'}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Desnivel + y Desnivel - -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,3,0" Spacing="1">
+                                                                <TextBlock Text="Desnivel +" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.DesnivelPositivo, Mode=OneWay, StringFormat='▲ +{0:F0} m'}" IsReadOnly="True" Background="#0B0F19" Foreground="#10B981" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" Margin="3,0,0,0" Spacing="1">
+                                                                <TextBlock Text="Desnivel -" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.DesnivelNegativo, Mode=OneWay, StringFormat='▼ -{0:F0} m'}" IsReadOnly="True" Background="#0B0F19" Foreground="#EF4444" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Subidas y Bajadas -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,3,0" Spacing="1">
+                                                                <TextBlock Text="Subidas" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.ContadorSubidas, Mode=OneWay, StringFormat='Sub: {0}'}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" Margin="3,0,0,0" Spacing="1">
+                                                                <TextBlock Text="Bajadas" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.ContadorBajadas, Mode=OneWay, StringFormat='Baj: {0}'}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Latitud y Longitud Origen (3 decimales) -->
+                                                        <Grid ColumnDefinitions="*,*">
+                                                            <StackPanel Grid.Column="0" Margin="0,0,3,0" Spacing="1">
+                                                                <TextBlock Text="Latitud (3 dec)" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.LatitudOrig, Mode=OneWay, StringFormat='{}{0:F3}'}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" Margin="3,0,0,0" Spacing="1">
+                                                                <TextBlock Text="Longitud (3 dec)" FontSize="9" Foreground="#64748B" />
+                                                                <TextBox Text="{Binding FormRuta.LongitudOrig, Mode=OneWay, StringFormat='{}{0:F3}'}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- Creador (Email y Teléfono) -->
+                                                        <StackPanel Spacing="1">
+                                                            <TextBlock Text="Creador de Ruta" FontSize="9" Foreground="#64748B" />
+                                                            <TextBox Text="{Binding FormRuta.EmailCreador, Mode=OneWay}" IsReadOnly="True" Background="#0B0F19" Foreground="#CBD5E1" FontSize="10" Height="22" Padding="4,1" />
+                                                        </StackPanel>
+
+                                                        <!-- Nombre de la Ruta -->
+                                                        <StackPanel Spacing="1">
+                                                            <TextBlock Text="Nombre" FontSize="9" Foreground="#64748B" />
+                                                            <TextBox Text="{Binding FormRuta.Nombre, Mode=OneWay}" IsReadOnly="True" Background="#0B0F19" Foreground="#F8FAFC" FontWeight="SemiBold" FontSize="10" Height="22" Padding="4,1" />
+                                                        </StackPanel>
+
+                                                        <!-- Descripción -->
+                                                        <StackPanel Spacing="1">
+                                                            <TextBlock Text="Descripción" FontSize="9" Foreground="#64748B" />
+                                                            <TextBox Text="{Binding FormRuta.Descripcion, Mode=OneWay}"
+                                                                     IsReadOnly="True"
+                                                                     AcceptsReturn="True"
+                                                                     TextWrapping="Wrap"
+                                                                     Height="36"
+                                                                     Background="#0B0F19"
+                                                                     Foreground="#CBD5E1"
+                                                                     FontSize="9"
+                                                                     Padding="4,2" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+
+                                            </StackPanel>
+                                        </Border>
+                                    </Panel>
+
+                                    <!-- COLUMNA 1: EL LIBRO (ABARCA TODA LA PÁGINA) -->
+                                    <Border Grid.Column="1"
+                                            Background="#131B2B"
+                                            BorderBrush="#253248"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="14"
+                                            VerticalAlignment="Stretch">
+                                        <StackPanel Spacing="12">
+                                            <!-- Header del Book con Botón de Alternar Ficha -->
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <Button Command="{Binding ToggleRouteDetailsCommand}"
+                                                            Classes="secondary"
+                                                            Padding="8,4"
+                                                            FontSize="11"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding RouteDetailsToggleText}" FontWeight="SemiBold" />
+                                                    </Button>
+                                                    <TextBlock Text="📂 Libro de Ruta" FontWeight="SemiBold" FontSize="14" Foreground="#38BDF8" VerticalAlignment="Center" />
+                                                    <Border Background="#0C4A6E" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding CurrentPuntoItems.Count, StringFormat='{}{0} Puntos'}" FontSize="11" Foreground="#38BDF8" FontWeight="SemiBold" />
+                                                    </Border>
+                                                    <Border Background="#064E3B" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding CurrentRouteDetails.Traza.Count, StringFormat='{}{0} Puntos GPS'}" FontSize="11" Foreground="#34D399" FontWeight="SemiBold" />
+                                                    </Border>
+                                                </StackPanel>
+
+                                                <!-- Botón directo para Guardar y Sincronizar Ruta -->
+                                                <Button Grid.Column="1"
+                                                        Classes="primary"
+                                                        Command="{Binding SaveCurrentRouteCommand}"
+                                                        Padding="12,5"
+                                                        VerticalAlignment="Center"
+                                                        ToolTip.Tip="Guardar y sincronizar los cambios de esta ruta en PostgreSQL y SQLite">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <TextBlock Text="💾" />
+                                                        <TextBlock Text="Sincronizar Ruta" FontWeight="Bold" FontSize="11" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </Grid>
+
+                                            <!-- TabControl de 2 pestañas -->
+                                            <TabControl SelectedIndex="{Binding RouteBookTabIndex, Mode=TwoWay}"
+                                                        MinHeight="580">
+
+                                                <!-- PÁGINA 1: FAROS (PUNTOS Y FOTOS) -->
+                                                <TabItem Header="📍 Faros">
+                                                    <StackPanel Spacing="10" Margin="0,10,0,0">
+                                                        <TextBlock Text="Waypoints registrados en la ruta y evidencias fotográficas (Cloudinary). Puede retirar o bloquear fotos reportadas directamente:"
+                                                                   FontSize="11" Foreground="#94A3B8" />
+
+                                                        <!-- Mensaje si no hay puntos -->
+                                                        <Border Background="#0B0F19"
+                                                                BorderBrush="#1E293B"
+                                                                BorderThickness="1"
+                                                                CornerRadius="8"
+                                                                Padding="20"
+                                                                IsVisible="{Binding !CurrentPuntoItems.Count}">
+                                                            <StackPanel Spacing="6" HorizontalAlignment="Center">
+                                                                <TextBlock Text="ℹ No hay puntos registrados o desencriptados para esta ruta."
+                                                                           Foreground="#64748B" FontSize="12" HorizontalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </Border>
+
+                                                        <!-- Listado de Puntos -->
+                                                        <ItemsControl ItemsSource="{Binding CurrentPuntoItems}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="vm:PuntoRutaItem">
+                                                                    <Border Background="#0F172A"
+                                                                            BorderBrush="#1E293B"
+                                                                            BorderThickness="1"
+                                                                            CornerRadius="8"
+                                                                            Padding="12"
+                                                                            Margin="0,0,0,10">
+                                                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                                                            <!-- Número / Icono -->
+                                                                            <Border Grid.Column="0"
+                                                                                    Width="34" Height="34"
+                                                                                    CornerRadius="17"
+                                                                                    Background="#1E293B"
+                                                                                    BorderBrush="#F59E0B"
+                                                                                    BorderThickness="1.5"
+                                                                                    Margin="0,0,12,0"
+                                                                                    VerticalAlignment="Top">
+                                                                                <TextBlock Text="{Binding Index}"
+                                                                                           Foreground="#F59E0B"
+                                                                                           FontWeight="Bold"
+                                                                                           FontSize="12"
+                                                                                           HorizontalAlignment="Center"
+                                                                                           VerticalAlignment="Center" />
+                                                                            </Border>
+
+                                                                            <!-- Información del Punto -->
+                                                                            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                                    <TextBlock Text="{Binding Nombre}"
+                                                                                               FontWeight="SemiBold"
+                                                                                               FontSize="13"
+                                                                                               Foreground="#F8FAFC" />
+                                                                                    <Border Background="#1E293B" CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+                                                                                        <TextBlock Text="{Binding ConectividadPctFormateada}" FontSize="10" Foreground="#34D399" />
+                                                                                    </Border>
+                                                                                </StackPanel>
+
+                                                                                <TextBlock Text="{Binding Descripcion}"
+                                                                                           FontSize="12"
+                                                                                           Foreground="#94A3B8"
+                                                                                           TextWrapping="Wrap" />
+
+                                                                                <TextBlock Text="{Binding CoordenadasFormateadas}"
+                                                                                           FontSize="11"
+                                                                                           Foreground="#64748B" />
+
+                                                                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+                                                                                    <Button Content="🗺️ Ver en Recorrido"
+                                                                                            Command="{Binding VerEnMapaCommand}"
+                                                                                            Classes="secondary"
+                                                                                            FontSize="10"
+                                                                                            Padding="8,4"
+                                                                                            ToolTip.Tip="Centrar y ampliar este faro directamente en el mapa interactivo de recorrido" />
+
+                                                                                    <Button Content="🗑️ Eliminar Punto"
+                                                                                            Command="{Binding EliminarPuntoCommand}"
+                                                                                            Classes="danger"
+                                                                                            FontSize="10"
+                                                                                            Padding="8,4"
+                                                                                            ToolTip.Tip="Eliminar este punto pero conservando la traza GPS para seguir el camino" />
+                                                                                </StackPanel>
+                                                                            </StackPanel>
+
+                                                                            <!-- Foto Cloudinary (Miniatura y Botones: Ver / Bloquear) -->
+                                                                            <StackPanel Grid.Column="2"
+                                                                                        Margin="12,0,0,0"
+                                                                                        Spacing="4"
+                                                                                        VerticalAlignment="Center"
+                                                                                        IsVisible="{Binding HasFoto}">
+                                                                                <!-- Miniatura interactiva: al dar clic agranda la foto -->
+                                                                                <Button Command="{Binding VerFotoCommand}"
+                                                                                        Width="80" Height="80"
+                                                                                        Padding="0"
+                                                                                        CornerRadius="6"
+                                                                                        ClipToBounds="True"
+                                                                                        Background="#070B14"
+                                                                                        BorderBrush="#EC4899"
+                                                                                        BorderThickness="1.5"
+                                                                                        Cursor="Hand"
+                                                                                        HorizontalContentAlignment="Center"
+                                                                                        VerticalContentAlignment="Center"
+                                                                                        ToolTip.Tip="Clic para agrandar foto">
+                                                                                    <Panel Width="80" Height="80">
+                                                                                        <Image Source="{Binding FotoBitmap}"
+                                                                                               Stretch="UniformToFill" />
+                                                                                        <ProgressBar IsIndeterminate="True"
+                                                                                                     IsVisible="{Binding IsLoadingPhoto}"
+                                                                                                     HorizontalAlignment="Center"
+                                                                                                     VerticalAlignment="Center" />
+                                                                                    </Panel>
+                                                                                </Button>
+
+                                                                                <!-- Botón Clic para agrandar foto -->
+                                                                                <Button Content="🔍 Clic para agrandar foto"
+                                                                                        Command="{Binding VerFotoCommand}"
+                                                                                        FontSize="9"
+                                                                                        FontWeight="SemiBold"
+                                                                                        Padding="4,4"
+                                                                                        HorizontalAlignment="Stretch"
+                                                                                        HorizontalContentAlignment="Center"
+                                                                                        ToolTip.Tip="Clic para agrandar foto" />
+
+                                                                                <!-- Botón Bloquear / Quitar Foto -->
+                                                                                <Button Content="🚫 Moderar Foto"
+                                                                                        Command="{Binding BloquearFotoCommand}"
+                                                                                        Classes="danger"
+                                                                                        FontSize="10"
+                                                                                        Padding="6,3"
+                                                                                        HorizontalAlignment="Stretch"
+                                                                                        HorizontalContentAlignment="Center"
+                                                                                        ToolTip.Tip="Eliminar punto o sustituir foto por aviso con el motivo de retiro" />
+                                                                            </StackPanel>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </TabItem>
+
+                                                <!-- PÁGINA 2: RECORRIDO (MAPA CON TRAZA Y FAROS) -->
+                                                <TabItem Header="🗺️ Recorrido">
+                                                    <Grid RowDefinitions="Auto,*" Margin="0,10,0,0">
+                                                        <!-- Barra de Herramientas del Mapa Libre -->
+                                                        <Border Grid.Row="0"
+                                                                Background="#0F172A"
+                                                                BorderBrush="#1E293B"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                Padding="10,6"
+                                                                Margin="0,0,0,8">
+                                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                                <!-- Botón Ocultar/Mostrar Ficha -->
+                                                                <Button Grid.Column="0"
+                                                                        Command="{Binding ToggleRouteDetailsCommand}"
+                                                                        Content="{Binding RouteDetailsToggleText}"
+                                                                        Classes="secondary"
+                                                                        Padding="8,4"
+                                                                        FontSize="10"
+                                                                        Margin="0,0,10,0" />
+
+                                                                <!-- Selector de Capas Libres -->
+                                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                                    <TextBlock Text="Capa:" FontSize="10" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,2,0" />
+                                                                    <Button Content="🌐 OpenStreetMap" Click="OnSetOsmLayer" Padding="6,3" FontSize="10" Classes="secondary" ToolTip.Tip="Capa libre comunitaria OpenStreetMap" />
+                                                                    <Button Content="🗺️ Carto Voyager" Click="OnSetCartoLayer" Padding="6,3" FontSize="10" Classes="secondary" ToolTip.Tip="Capa libre optimizada para caminos y senderos" />
+                                                                    <Button Content="⛰️ OpenTopo" Click="OnSetTopoLayer" Padding="6,3" FontSize="10" Classes="secondary" ToolTip.Tip="Curvas de nivel y topografía libre" />
+                                                                    <Button Content="⬛ Vectorial" Click="OnSetVectorLayer" Padding="6,3" FontSize="10" Classes="secondary" ToolTip.Tip="Modo oscuro vectorial" />
+                                                                </StackPanel>
+
+                                                                <!-- Controles y Enlace Web -->
+                                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                                                                    <Button Content="🌍 Ver en Web"
+                                                                            Command="{Binding OpenOpenStreetMapWebCommand}"
+                                                                            Padding="8,4"
+                                                                            FontSize="10"
+                                                                            Classes="secondary"
+                                                                            ToolTip.Tip="Abrir la ruta directamente en OpenStreetMap en el navegador web" />
+                                                                    <Button x:Name="BtnMapZoomIn" Content="➕" Padding="8,4" ToolTip.Tip="Acercar" Click="OnZoomInClick" />
+                                                                    <Button x:Name="BtnMapZoomOut" Content="➖" Padding="8,4" ToolTip.Tip="Alejar" Click="OnZoomOutClick" />
+                                                                    <Button x:Name="BtnMapReset" Content="⟲ Centrar" Padding="8,4" ToolTip.Tip="Restablecer vista a la ruta" Click="OnResetMapClick" />
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+
+                                                        <!-- Lienzo de SkiaSharp / OpenStreetMap Tiles -->
+                                                        <Border Grid.Row="1"
+                                                                Background="#050811"
+                                                                BorderBrush="#1E293B"
+                                                                BorderThickness="1"
+                                                                CornerRadius="8"
+                                                                MinHeight="520"
+                                                                ClipToBounds="True">
+                                                            <views:RouteMapControl x:Name="RouteMap"
+                                                                                   Traza="{Binding CurrentRouteDetails.Traza}"
+                                                                                   Puntos="{Binding CurrentRouteDetails.Puntos}"
+                                                                                   HorizontalAlignment="Stretch"
+                                                                                   VerticalAlignment="Stretch" />
+                                                        </Border>
+                                                    </Grid>
+                                                </TabItem>
+                                            </TabControl>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
 
                                 <!-- FORMULARIO: AGRUPACION -->
                                 <StackPanel Spacing="12"
@@ -907,6 +1572,7 @@
 
                                     <Button Classes="danger"
                                             Command="{Binding DeleteCurrentFormRecordCommand}"
+                                            IsEnabled="{Binding CanDeleteFormRecord}"
                                             Height="38"
                                             ToolTip.Tip="Eliminar este registro de la base de datos">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
@@ -933,185 +1599,6 @@
                         </ScrollViewer>
                     </TabItem>
                 </TabControl>
-            </Border>
-
-            <!-- RIGHT AREA: MENU DE TABLAS -->
-            <Border Grid.Column="1"
-                    Background="#131B2B"
-                    BorderBrush="#253248"
-                    BorderThickness="1"
-                    CornerRadius="10"
-                    Padding="14">
-
-                <Grid RowDefinitions="Auto,*,Auto">
-
-                    <!-- Menu Header -->
-                    <StackPanel Grid.Row="0" Margin="0,0,0,14" Spacing="4">
-                        <TextBlock Text="TABLAS DE LA BD"
-                                   FontSize="13"
-                                   FontWeight="Bold"
-                                   Foreground="#F8FAFC"
-                                   LetterSpacing="1.1" />
-                        <TextBlock Text="PostgreSQL Neon / PostgREST"
-                                   FontSize="11"
-                                   Foreground="#64748B" />
-                    </StackPanel>
-
-                    <!-- Table Navigation Buttons -->
-                    <StackPanel Grid.Row="1" Spacing="8">
-
-                        <!-- Senderistas -->
-                        <Button Classes="secondary"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding SelectTableCommand}"
-                                CommandParameter="Senderistas"
-                                Height="48">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <TextBlock Grid.Column="0" Text="👥" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Senderistas" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
-                                    <TextBlock Text="Usuarios y roles" FontSize="10" Foreground="#64748B" />
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding SenderistasCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <!-- Rutas -->
-                        <Button Classes="secondary"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding SelectTableCommand}"
-                                CommandParameter="Rutas"
-                                Height="48">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <TextBlock Grid.Column="0" Text="🗺" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Rutas" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
-                                    <TextBlock Text="Senderos y distancias" FontSize="10" Foreground="#64748B" />
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding RutasCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <!-- Agrupaciones -->
-                        <Button Classes="secondary"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding SelectTableCommand}"
-                                CommandParameter="Agrupaciones"
-                                Height="48">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <TextBlock Grid.Column="0" Text="🏛" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Agrupaciones" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
-                                    <TextBlock Text="Clubs y asociaciones" FontSize="10" Foreground="#64748B" />
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding AgrupacionesCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <!-- Invitaciones a Rutas -->
-                        <Button Classes="secondary"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding SelectTableCommand}"
-                                CommandParameter="Invitaciones"
-                                Height="48">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <TextBlock Grid.Column="0" Text="✉" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Invitaciones" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
-                                    <TextBlock Text="Salidas y convocatorias" FontSize="10" Foreground="#64748B" />
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding InvitacionesCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <!-- Participantes -->
-                        <Button Classes="secondary"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding SelectTableCommand}"
-                                CommandParameter="Participantes"
-                                Height="48">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <TextBlock Grid.Column="0" Text="🎒" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Participantes" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
-                                    <TextBlock Text="Inscripciones a salidas" FontSize="10" Foreground="#64748B" />
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding ParticipantesCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <!-- Frases Dificultad -->
-                        <Button Classes="secondary"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding SelectTableCommand}"
-                                CommandParameter="FrasesDificultad"
-                                Height="48">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <TextBlock Grid.Column="0" Text="💬" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Frases Dificultad" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
-                                    <TextBlock Text="Textos por nivel de reto" FontSize="10" Foreground="#64748B" />
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding FrasesDificultadCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <!-- Requisitos Senderismo -->
-                        <Button Classes="secondary"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding SelectTableCommand}"
-                                CommandParameter="RequisitosSenderismo"
-                                Height="48">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <TextBlock Grid.Column="0" Text="📋" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Requisitos" FontWeight="SemiBold" FontSize="13" Foreground="#F1F5F9" />
-                                    <TextBlock Text="Equipo, ropa y seguridad" FontSize="10" Foreground="#64748B" />
-                                </StackPanel>
-                                <Border Grid.Column="2" Background="#1E293B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding RequisitosSenderismoCount}" FontSize="10" FontWeight="Bold" Foreground="#38BDF8" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                    </StackPanel>
-
-                    <!-- Bottom System & Cache Info Box -->
-                    <Border Grid.Row="2"
-                            Background="#0B0F19"
-                            BorderBrush="#1E293B"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="12,10"
-                            Margin="0,14,0,0">
-                        <StackPanel Spacing="6">
-                            <TextBlock Text="⚡ Modo de Funcionamiento" FontWeight="SemiBold" FontSize="11" Foreground="#38BDF8" />
-                            <TextBlock Text="• Caché local SQLite activo" FontSize="10" Foreground="#94A3B8" />
-                            <TextBlock Text="• PostgREST API (Render Cloud)" FontSize="10" Foreground="#94A3B8" />
-                            <TextBlock Text="• Soporta uso con o sin conexión" FontSize="10" Foreground="#10B981" />
-                        </StackPanel>
-                    </Border>
-
-                </Grid>
             </Border>
 
         </Grid>
@@ -1189,6 +1676,293 @@
                                 <TextBlock Text="{Binding ConfirmDialogConfirmText}" FontWeight="Bold" FontSize="13" />
                             </StackPanel>
                         </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- ============================================== -->
+        <!-- MODAL DE VISUALIZACIÓN DE FOTO DE CLOUDINARY  -->
+        <!-- ============================================== -->
+        <Border Background="#D9000000"
+                IsVisible="{Binding IsPhotoViewerOpen}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                ZIndex="99">
+            <Border Background="#131B2B"
+                    BorderBrush="#253248"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="20"
+                    MaxWidth="760"
+                    MaxHeight="650"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <!-- Header Modal -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{Binding CurrentViewingPhotoPoint.Descripcion}"
+                                       FontWeight="Bold" FontSize="15" Foreground="#F8FAFC" />
+                            <TextBlock Text="{Binding CurrentViewingPhotoPoint.CoordenadasTexto, StringFormat='Coordenadas: {0}'}"
+                                       FontSize="11" Foreground="#94A3B8" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Classes="secondary"
+                                Command="{Binding ClosePhotoViewerCommand}"
+                                Padding="8,4"
+                                ToolTip.Tip="Cerrar visor">
+                            <TextBlock Text="✕" FontWeight="Bold" FontSize="13" />
+                        </Button>
+                    </Grid>
+
+                    <!-- Foto Ampliada -->
+                    <Border Grid.Row="1"
+                            Background="#070B14"
+                            BorderBrush="#1E293B"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            ClipToBounds="True"
+                            MinHeight="360"
+                            Margin="0,0,0,12">
+                        <Panel>
+                            <Image Source="{Binding CurrentViewingPhotoPoint.FotoBitmap}"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                            <ProgressBar IsIndeterminate="True"
+                                         IsVisible="{Binding CurrentViewingPhotoPoint.IsLoadingPhoto}"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center" />
+                        </Panel>
+                    </Border>
+
+                    <!-- Footer / Cloudinary Link y Moderación de Fotos -->
+                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding CurrentViewingPhotoPoint.FotoPath}"
+                                   FontSize="10"
+                                   Foreground="#64748B"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+
+                        <Button Grid.Column="1"
+                                Classes="danger"
+                                Command="{Binding RequestPointActionCommand}"
+                                CommandParameter="{Binding CurrentViewingPhotoPoint}"
+                                Margin="0,0,10,0"
+                                Padding="12,6"
+                                ToolTip.Tip="Eliminar este punto o sustituir la fotografía por un aviso con el motivo de retiro">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="🚫" />
+                                <TextBlock Text="Moderar Foto / Punto" FontWeight="SemiBold" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="2"
+                                Classes="primary"
+                                Command="{Binding ClosePhotoViewerCommand}"
+                                Padding="16,6">
+                            <TextBlock Text="Cerrar" FontWeight="SemiBold" FontSize="12" />
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- ============================================================== -->
+        <!-- MODAL DE GESTIÓN Y MODERACIÓN DE PUNTO / FOTOGRAFÍA (2 MATICES) -->
+        <!-- ============================================================== -->
+        <Border Background="#E6000000"
+                IsVisible="{Binding IsPointActionDialogVisible}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                ZIndex="110">
+            <Border Background="#131B2B"
+                    BorderBrush="#253248"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="24"
+                    MaxWidth="580"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <!-- Encabezado -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="3">
+                            <TextBlock Text="{Binding PointActionDialogTitle}"
+                                       FontWeight="Bold"
+                                       FontSize="16"
+                                       Foreground="#F8FAFC" />
+                            <TextBlock Text="{Binding PointActionDialogSubtitle}"
+                                       FontSize="12"
+                                       Foreground="#94A3B8" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Classes="secondary"
+                                Command="{Binding ClosePointActionDialogCommand}"
+                                Padding="8,4"
+                                ToolTip.Tip="Cancelar y cerrar">
+                            <TextBlock Text="✕" FontWeight="Bold" FontSize="13" />
+                        </Button>
+                    </Grid>
+
+                    <!-- VISTA 1: ELECCIÓN DE ACCIÓN (2 MATICES) -->
+                    <StackPanel Spacing="14" IsVisible="{Binding !IsMotiveInputVisible}">
+                        <TextBlock Text="¿Qué acción desea realizar sobre este punto de la ruta?"
+                                   FontSize="13"
+                                   Foreground="#CBD5E1"
+                                   FontWeight="SemiBold" />
+
+                        <!-- Opción 1: Eliminar el Punto pero conservar la Traza GPS -->
+                        <Border Background="#1E293B"
+                                BorderBrush="#334155"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
+                                    <TextBlock Text="🗺️ 1. Eliminar Punto (Conservar Traza GPS)"
+                                               FontWeight="Bold"
+                                               FontSize="13"
+                                               Foreground="#F1F5F9" />
+                                    <TextBlock Text="Se eliminará el punto de control de la lista y del mapa, pero la traza GPS para seguir el camino se conservará íntegra para no alterar la ruta."
+                                               FontSize="11"
+                                               Foreground="#94A3B8"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="1"
+                                        Classes="danger"
+                                        Command="{Binding ConfirmDeletePointKeepTrazaCommand}"
+                                        Padding="14,8"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="Eliminar Punto" FontWeight="Bold" FontSize="12" />
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Opción 2: Sustituir la foto por motivo de eliminación -->
+                        <Border Background="#1E293B"
+                                BorderBrush="#EAB308"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="14"
+                                IsVisible="{Binding TargetPointItem.TieneFoto}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,12,0">
+                                    <TextBlock Text="🖼️ 2. Sustituir Foto con Motivo de Retiro"
+                                               FontWeight="Bold"
+                                               FontSize="13"
+                                               Foreground="#FDE047" />
+                                    <TextBlock Text="Se creará una imagen gráfica con fondo amarillo y letras bold negras exponiendo la frase/motivo, sustituyendo la foto original."
+                                               FontSize="11"
+                                               Foreground="#94A3B8"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="1"
+                                        Classes="primary"
+                                        Command="{Binding OpenMotiveInputCommand}"
+                                        Padding="14,8"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="Escribir Motivo" FontWeight="Bold" FontSize="12" />
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Botón Cancelar -->
+                        <Button Content="Cancelar"
+                                Command="{Binding ClosePointActionDialogCommand}"
+                                Classes="secondary"
+                                HorizontalAlignment="Right"
+                                Padding="16,6"
+                                Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <!-- VISTA 2: CAPTURA DE MOTIVO Y GENERACIÓN DE JPG AMARILLO -->
+                    <StackPanel Spacing="14" IsVisible="{Binding IsMotiveInputVisible}">
+                        <TextBlock Text="Indique el motivo por el cual se retira la imagen:"
+                                   FontSize="13"
+                                   Foreground="#F8FAFC"
+                                   FontWeight="SemiBold" />
+
+                        <!-- Sugerencias rápidas de motivos -->
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Motivos frecuentes sugeridos:"
+                                       FontSize="11"
+                                       Foreground="#64748B"
+                                       FontWeight="SemiBold" />
+                            <WrapPanel Orientation="Horizontal">
+                                <Button Classes="secondary"
+                                        Content="Fotografía no representativa"
+                                        Command="{Binding SelectSuggestedMotiveCommand}"
+                                        CommandParameter="Fotografía no representativa del camino o sendero"
+                                        FontSize="10" Padding="8,3" Margin="0,0,6,6" />
+                                <Button Classes="secondary"
+                                        Content="Contenido inapropiado / Reportado"
+                                        Command="{Binding SelectSuggestedMotiveCommand}"
+                                        CommandParameter="Contenido inapropiado reportado por senderistas"
+                                        FontSize="10" Padding="8,3" Margin="0,0,6,6" />
+                                <Button Classes="secondary"
+                                        Content="Foto borrosa o ilegible"
+                                        Command="{Binding SelectSuggestedMotiveCommand}"
+                                        CommandParameter="Fotografía borrosa o con calidad deficiente"
+                                        FontSize="10" Padding="8,3" Margin="0,0,6,6" />
+                                <Button Classes="secondary"
+                                        Content="Privacidad / Rostros"
+                                        Command="{Binding SelectSuggestedMotiveCommand}"
+                                        CommandParameter="Privacidad: Rostros o personas no autorizadas"
+                                        FontSize="10" Padding="8,3" Margin="0,0,6,6" />
+                                <Button Classes="secondary"
+                                        Content="Publicidad no relacionada"
+                                        Command="{Binding SelectSuggestedMotiveCommand}"
+                                        CommandParameter="Publicidad o material ajeno a la ruta"
+                                        FontSize="10" Padding="8,3" Margin="0,0,6,6" />
+                            </WrapPanel>
+                        </StackPanel>
+
+                        <!-- Caja de texto para el motivo personalizado -->
+                        <TextBox Text="{Binding RemovalMotiveText, Mode=TwoWay}"
+                                 Watermark="Escriba aquí la razón que se plasmará en la imagen amarilla..."
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="80"
+                                 FontSize="12" />
+
+                        <!-- Aviso visual -->
+                        <Border Background="#282208"
+                                BorderBrush="#EAB308"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="⚠️" FontSize="14" VerticalAlignment="Center" />
+                                <TextBlock Text="Se generará un archivo JPG con fondo amarillo y texto bold negro que sustituirá la foto en el caché y en la base de datos."
+                                           FontSize="11"
+                                           Foreground="#FDE047"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Botones de Acción -->
+                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+                            <Button Grid.Column="0"
+                                    Classes="secondary"
+                                    Command="{Binding BackToPointActionOptionsCommand}"
+                                    Padding="14,6">
+                                <TextBlock Text="◀ Volver" FontWeight="SemiBold" FontSize="12" />
+                            </Button>
+
+                            <Button Grid.Column="2"
+                                    Classes="primary"
+                                    Command="{Binding ConfirmReplacePhotoWithMotiveCommand}"
+                                    Padding="18,6">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="🖼️" />
+                                    <TextBlock Text="Generar JPG y Sustituir Foto" FontWeight="Bold" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
             </Border>

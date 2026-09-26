@@ -37,6 +37,27 @@ public partial class InvitacionRuta : ObservableObject
         set => SetProperty(ref _fechaSalida, value);
     }
 
+    [JsonPropertyName("fecha_hora_salida")]
+    public string? FechaHoraSalida
+    {
+        get => _fechaSalida;
+        set
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                SetProperty(ref _fechaSalida, value);
+            }
+        }
+    }
+
+    private string? _telefono;
+    [JsonPropertyName("telefono")]
+    public string? Telefono
+    {
+        get => _telefono;
+        set => SetProperty(ref _telefono, value);
+    }
+
     private string? _puntoEncuentro;
     [JsonPropertyName("punto_encuentro")]
     public string? PuntoEncuentro
@@ -83,6 +104,7 @@ public partial class InvitacionRuta : ObservableObject
         Titulo = Titulo,
         IdRuta = IdRuta,
         FechaSalida = FechaSalida,
+        Telefono = Telefono,
         PuntoEncuentro = PuntoEncuentro,
         IdAgrupacion = IdAgrupacion,
         EmailOrganizador = EmailOrganizador,

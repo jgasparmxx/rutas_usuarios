@@ -9,6 +9,8 @@ publish/
 ## Local package and tool caches
 .nuget_packages/
 .dotnet_home/
+.dotnet_home*/
+.dotnet_home */
 .vs/
 .idea/
 .vscode/

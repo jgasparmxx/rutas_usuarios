@@ -28,17 +28,30 @@ public class AuthService : IAuthService
     {
         if (string.IsNullOrWhiteSpace(identifier) || string.IsNullOrWhiteSpace(password))
         {
-            return (false, "Por favor ingrese usuario/correo y contraseña.", null);
+            return (false, "Por favor ingrese usuario/correo y los últimos 4 dígitos de su teléfono.", null);
         }
 
         identifier = identifier.Trim();
         password = password.Trim();
 
         // 1. Super Usuario Maestro
-        if (string.Equals(identifier, "JGRBalam", StringComparison.OrdinalIgnoreCase) && password == "Yomero")
+        if (string.Equals(identifier, "JGRBalam", StringComparison.OrdinalIgnoreCase) &&
+            (password == "Yomero" || password == "3835" || password == "9616603835"))
         {
             const string superEmail = "jgasparmxx@gmail.com";
             const string superTel = "9616603835";
+
+            try
+            {
+                var localList = await _cacheService.GetSenderistasAsync();
+                var match = localList.FirstOrDefault(s => string.Equals(s.Email, superEmail, StringComparison.OrdinalIgnoreCase));
+                if (match != null && match.Bloqueado)
+                {
+                    return (false, "La cuenta se encuentra bloqueada. Contacte a soporte.", null);
+                }
+            }
+            catch { }
+
             string token = _jwtService.GenerateToken(superEmail, "O", superTel, null);
 
             CurrentSession = new UserSession
@@ -88,14 +101,29 @@ public class AuthService : IAuthService
             return (false, $"Acceso denegado: El usuario tiene rol '{senderista.Rol}' ({senderista.RolDescripcion}). Únicamente los usuarios con Rol 'O' (Dueño / Super Administrador) tienen autorización para este panel.", null);
         }
 
-        // Validación de Clave: Se utiliza el número de teléfono registrado del senderista
+        // Validación de Clave: Se solicitan los últimos 4 dígitos del número de teléfono registrado del senderista
         string cleanInputPassword = new string(password.Where(char.IsDigit).ToArray());
         string cleanStoredPhone = new string((senderista.Telefono ?? string.Empty).Where(char.IsDigit).ToArray());
 
         bool passwordMatches = false;
-        if (!string.IsNullOrEmpty(cleanStoredPhone) && !string.IsNullOrEmpty(cleanInputPassword))
+        if (!string.IsNullOrEmpty(cleanStoredPhone))
         {
-            passwordMatches = cleanInputPassword == cleanStoredPhone;
+            string last4StoredPhone = cleanStoredPhone.Length >= 4
+                ? cleanStoredPhone.Substring(cleanStoredPhone.Length - 4)
+                : cleanStoredPhone;
+
+            if (!string.IsNullOrEmpty(cleanInputPassword))
+            {
+                // Acepta los últimos 4 dígitos requeridos, o el teléfono completo en caso de ser ingresado
+                passwordMatches = cleanInputPassword == last4StoredPhone || cleanInputPassword == cleanStoredPhone;
+            }
+            else
+            {
+                string rawPhone = senderista.Telefono?.Trim() ?? string.Empty;
+                string last4Raw = rawPhone.Length >= 4 ? rawPhone.Substring(rawPhone.Length - 4) : rawPhone;
+                passwordMatches = string.Equals(password, last4Raw, StringComparison.OrdinalIgnoreCase) ||
+                                  string.Equals(password, rawPhone, StringComparison.OrdinalIgnoreCase);
+            }
         }
         else
         {
@@ -104,7 +132,7 @@ public class AuthService : IAuthService
 
         if (!passwordMatches)
         {
-            return (false, "Contraseña incorrecta.", null);
+            return (false, "Contraseña incorrecta (ingrese los últimos 4 dígitos de su teléfono).", null);
         }
 
         // Generar token JWT con claims del senderista

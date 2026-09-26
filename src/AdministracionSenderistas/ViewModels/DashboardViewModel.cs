@@ -28,6 +28,7 @@ public partial class DashboardViewModel : ViewModelBase
     private readonly IDataRepository _repository;
     private readonly IAuthService _authService;
     private readonly Action _onLogout;
+    private readonly ICloudinaryService _cloudinaryService;
 
     // Full data lists
     private List<Senderista> _allSenderistas = new();
@@ -85,6 +86,77 @@ public partial class DashboardViewModel : ViewModelBase
         }
         OnPropertyChanged(nameof(SelectedRoleOption));
         OnPropertyChanged(nameof(SelectedFormAgrupacion));
+        NotifySenderistaRoleSecurityProperties();
+    }
+
+    public bool IsEditingSelf
+    {
+        get
+        {
+            if (FormSenderista == null) return false;
+
+            if (!string.IsNullOrWhiteSpace(CurrentUserEmail) &&
+                string.Equals(FormSenderista.Email?.Trim(), CurrentUserEmail.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var sessionTel = _authService.CurrentSession?.Telefono;
+            if (!string.IsNullOrWhiteSpace(sessionTel) &&
+                !string.IsNullOrWhiteSpace(FormSenderista.Telefono) &&
+                string.Equals(sessionTel.Trim(), FormSenderista.Telefono.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    public bool IsFormSenderistaSuperUser =>
+        string.Equals(FormSenderista?.Rol, "O", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(_originalSenderistaRole, "O", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Un usuario que tiene el rol de 'O' no puede cambiarse el rol a sí mismo,
+    /// ni ningún usuario con rol 'O' puede cambiar su rol.
+    /// </summary>
+    public bool CanEditFormSenderistaRole =>
+        !(IsEditingSelf && (CurrentRoleCode == "O" || IsFormSenderistaSuperUser)) &&
+        !IsFormSenderistaSuperUser;
+
+    /// <summary>
+    /// Un usuario que tiene el rol de 'O' no puede bloquearse a sí mismo.
+    /// Cualquier otro usuario (incluyendo otro usuario con rol 'O') sí puede ser bloqueado por un administrador.
+    /// </summary>
+    public bool CanEditFormSenderistaBloqueado => !IsEditingSelf;
+
+    public string? SenderistaRoleRestrictionMessage
+    {
+        get
+        {
+            if (IsEditingSelf && (CurrentRoleCode == "O" || IsFormSenderistaSuperUser))
+            {
+                return "Restricción de seguridad: Un usuario con rol 'O' no puede cambiarse el rol a sí mismo ni bloquearse.";
+            }
+            if (IsFormSenderistaSuperUser)
+            {
+                return "Restricción de seguridad: Los usuarios con rol 'O' no pueden cambiar de rol ni ser eliminados.";
+            }
+            return null;
+        }
+    }
+
+    public bool HasSenderistaRoleRestriction => !string.IsNullOrEmpty(SenderistaRoleRestrictionMessage);
+
+    private void NotifySenderistaRoleSecurityProperties()
+    {
+        OnPropertyChanged(nameof(IsEditingSelf));
+        OnPropertyChanged(nameof(IsFormSenderistaSuperUser));
+        OnPropertyChanged(nameof(CanEditFormSenderistaRole));
+        OnPropertyChanged(nameof(CanEditFormSenderistaBloqueado));
+        OnPropertyChanged(nameof(SenderistaRoleRestrictionMessage));
+        OnPropertyChanged(nameof(HasSenderistaRoleRestriction));
     }
 
     public ObservableCollection<RoleOption> AvailableRoles { get; } = new()
@@ -127,6 +199,14 @@ public partial class DashboardViewModel : ViewModelBase
                     return;
                 }
 
+                // Restricción: Un usuario con rol 'O' no puede cambiarse el rol
+                if (!CanEditFormSenderistaRole)
+                {
+                    RevertRoleSelection(_originalSenderistaRole ?? "O");
+                    StatusBanner = SenderistaRoleRestrictionMessage ?? "Restricción: Un usuario con rol 'O' no puede cambiarse el rol.";
+                    return;
+                }
+
                 // 1. Cuando a un senderista le cambio el rol a 'A' de administrador
                 if (string.Equals(newRoleKey, "A", StringComparison.OrdinalIgnoreCase))
                 {
@@ -145,6 +225,7 @@ public partial class DashboardViewModel : ViewModelBase
                 FormSenderista.Rol = newRoleKey;
                 _originalSenderistaRole = newRoleKey;
                 OnPropertyChanged();
+                NotifySenderistaRoleSecurityProperties();
             }
         }
     }
@@ -159,7 +240,11 @@ public partial class DashboardViewModel : ViewModelBase
                 FormSenderista.Rol = roleToRestore;
             }
             OnPropertyChanged(nameof(SelectedRoleOption));
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(SelectedRoleOption)));
+            try
+            {
+                Avalonia.Threading.Dispatcher.UIThread?.Post(() => OnPropertyChanged(nameof(SelectedRoleOption)));
+            }
+            catch { }
         }
         finally
         {
@@ -430,6 +515,43 @@ public partial class DashboardViewModel : ViewModelBase
     private Ruta _formRuta = new();
 
     [ObservableProperty]
+    private DetallesRuta _currentRouteDetails = new();
+
+    [ObservableProperty]
+    private ObservableCollection<PuntoRutaItem> _currentPuntoItems = new();
+
+    [ObservableProperty]
+    private PuntoRutaItem? _selectedPuntoItem;
+
+    [ObservableProperty]
+    private bool _isPhotoViewerOpen;
+
+    [ObservableProperty]
+    private PuntoRutaItem? _currentViewingPhotoPoint;
+
+    [ObservableProperty]
+    private int _routeBookTabIndex; // 0: Puntos de Interés, 1: Mapa Interactivo
+
+    public Agrupacion? SelectedFormRutaAgrupacion
+    {
+        get => AvailableAgrupaciones.FirstOrDefault(a =>
+            string.Equals(a.IdAgrupacion, FormRuta?.Agrupacion, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(a.Nombre, FormRuta?.Agrupacion, StringComparison.OrdinalIgnoreCase));
+        set
+        {
+            if (FormRuta != null)
+            {
+                var target = value?.IdAgrupacion ?? value?.Nombre;
+                if (!string.Equals(FormRuta.Agrupacion, target, StringComparison.Ordinal))
+                {
+                    FormRuta.Agrupacion = target;
+                    OnPropertyChanged();
+                }
+            }
+        }
+    }
+
+    [ObservableProperty]
     private Agrupacion _formAgrupacion = new();
 
     [ObservableProperty]
@@ -449,6 +571,31 @@ public partial class DashboardViewModel : ViewModelBase
 
     [ObservableProperty]
     private int _selectedTabIndex; // 0: Grid, 1: Formulario
+
+    partial void OnSelectedTabIndexChanged(int value)
+    {
+        if (value == 1 && !HasSelectedRecord)
+        {
+            SelectedTabIndex = 0;
+            StatusBanner = "Debe seleccionar un registro de la lista antes de consultar o editar en el formulario.";
+        }
+    }
+
+    [ObservableProperty]
+    private bool _isSidebarCollapsed;
+
+    public double SidebarWidth => IsSidebarCollapsed ? 68 : 230;
+
+    partial void OnIsSidebarCollapsedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SidebarWidth));
+    }
+
+    [RelayCommand]
+    public void ToggleSidebar()
+    {
+        IsSidebarCollapsed = !IsSidebarCollapsed;
+    }
 
     [ObservableProperty]
     private ActiveTable _currentTable = ActiveTable.Senderistas;
@@ -539,11 +686,13 @@ public partial class DashboardViewModel : ViewModelBase
     public DashboardViewModel(
         IDataRepository repository,
         IAuthService authService,
-        Action onLogout)
+        Action onLogout,
+        ICloudinaryService? cloudinaryService = null)
     {
         _repository = repository;
         _authService = authService;
         _onLogout = onLogout;
+        _cloudinaryService = cloudinaryService ?? new CloudinaryService();
 
         _repository.OnSyncStatusChanged += status =>
         {
@@ -585,13 +734,22 @@ public partial class DashboardViewModel : ViewModelBase
         ApplyCurrentFilter();
     }
 
-    public bool CanCreateNew => CurrentTable != ActiveTable.Senderistas;
+    public bool CanCreateNew => false;
 
     partial void OnCurrentTableChanged(ActiveTable value)
     {
         SearchQuery = string.Empty;
+        SelectedSenderista = null;
+        SelectedRuta = null;
+        SelectedAgrupacion = null;
+        SelectedInvitacion = null;
+        SelectedParticipante = null;
+        SelectedFraseDificultad = null;
+        SelectedRequisitoSenderismo = null;
         SelectedTabIndex = 0; // Regresar a Grid al cambiar de tabla
         OnPropertyChanged(nameof(CanCreateNew));
+        OnPropertyChanged(nameof(FormTitle));
+        UpdateNavigationState();
         _ = LoadCurrentTableDataAsync();
     }
 
@@ -613,6 +771,7 @@ public partial class DashboardViewModel : ViewModelBase
             {
                 _isInternalRoleUpdate = false;
             }
+            NotifySenderistaRoleSecurityProperties();
         }
         UpdateNavigationState();
     }
@@ -623,8 +782,375 @@ public partial class DashboardViewModel : ViewModelBase
         {
             FormRuta = value.Clone();
             IsNewRecord = false;
+            OnPropertyChanged(nameof(SelectedFormRutaAgrupacion));
+            LoadRouteDetails(FormRuta);
+        }
+        else
+        {
+            LoadRouteDetails(null);
         }
         UpdateNavigationState();
+    }
+
+    partial void OnFormRutaChanged(Ruta value)
+    {
+        OnPropertyChanged(nameof(SelectedFormRutaAgrupacion));
+        OnPropertyChanged(nameof(FormTitle));
+        LoadRouteDetails(value);
+    }
+
+    private void LoadRouteDetails(Ruta? ruta)
+    {
+        CurrentPuntoItems.Clear();
+        if (ruta == null || string.IsNullOrWhiteSpace(ruta.DatosEncriptados))
+        {
+            CurrentRouteDetails = new DetallesRuta();
+            return;
+        }
+
+        try
+        {
+            string decrypted = CryptoService.DecryptString(ruta.DatosEncriptados);
+            var details = CryptoService.ParseRouteDetails(decrypted);
+            CurrentRouteDetails = details;
+
+            for (int i = 0; i < details.Puntos.Count; i++)
+            {
+                CurrentPuntoItems.Add(new PuntoRutaItem(
+                    details.Puntos[i],
+                    i + 1,
+                    OpenPhotoViewer,
+                    RequestPointAction,
+                    FocusMapOnPunto,
+                    RequestDeletePunto));
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DashboardViewModel] Error al cargar detalles de la ruta: {ex.Message}");
+            CurrentRouteDetails = new DetallesRuta();
+        }
+    }
+
+    public Action<PuntoRuta>? RequestCenterMapOnPunto { get; set; }
+
+    [RelayCommand]
+    public void FocusMapOnPunto(PuntoRutaItem? item)
+    {
+        if (item == null) return;
+        RouteBookTabIndex = 1; // Cambiar automáticamente a la pestaña Recorrido
+        RequestCenterMapOnPunto?.Invoke(item.Punto);
+    }
+
+    [RelayCommand]
+    public void OpenPhotoViewer(PuntoRutaItem? item)
+    {
+        if (item != null && item.TieneFoto)
+        {
+            CurrentViewingPhotoPoint = item;
+            IsPhotoViewerOpen = true;
+        }
+    }
+
+    [RelayCommand]
+    public void ClosePhotoViewer()
+    {
+        IsPhotoViewerOpen = false;
+        CurrentViewingPhotoPoint = null;
+    }
+
+    [ObservableProperty]
+    private bool _isPointActionDialogVisible;
+
+    [ObservableProperty]
+    private PuntoRutaItem? _targetPointItem;
+
+    [ObservableProperty]
+    private bool _isMotiveInputVisible;
+
+    [ObservableProperty]
+    private string _removalMotiveText = string.Empty;
+
+    [ObservableProperty]
+    private string _pointActionDialogTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _pointActionDialogSubtitle = string.Empty;
+
+    [RelayCommand]
+    public void RequestPointAction(PuntoRutaItem? item)
+    {
+        if (item == null) return;
+        TargetPointItem = item;
+        IsMotiveInputVisible = false;
+        RemovalMotiveText = string.Empty;
+        PointActionDialogTitle = $"Gestión del Punto #{item.Indice}";
+        PointActionDialogSubtitle = $"Coordenadas: {item.CoordenadasFormateadas}";
+        IsPointActionDialogVisible = true;
+    }
+
+    [RelayCommand]
+    public void RequestDeletePunto(PuntoRutaItem? item)
+    {
+        if (item == null) return;
+        TargetPointItem = item;
+        IsMotiveInputVisible = false;
+        RemovalMotiveText = string.Empty;
+        PointActionDialogTitle = $"¿Eliminar Punto #{item.Indice}?";
+        PointActionDialogSubtitle = "Se mantendrá la traza GPS para seguir el camino sin alteraciones.";
+        IsPointActionDialogVisible = true;
+    }
+
+    [RelayCommand]
+    public void OpenMotiveInput()
+    {
+        IsMotiveInputVisible = true;
+        if (string.IsNullOrWhiteSpace(RemovalMotiveText))
+        {
+            RemovalMotiveText = "Fotografía no representativa del camino o sendero";
+        }
+    }
+
+    [RelayCommand]
+    public void BackToPointActionOptions()
+    {
+        IsMotiveInputVisible = false;
+    }
+
+    [RelayCommand]
+    public void SelectSuggestedMotive(string? motivo)
+    {
+        if (!string.IsNullOrWhiteSpace(motivo))
+        {
+            RemovalMotiveText = motivo;
+        }
+    }
+
+    [RelayCommand]
+    public void ClosePointActionDialog()
+    {
+        IsPointActionDialogVisible = false;
+        IsMotiveInputVisible = false;
+        TargetPointItem = null;
+        RemovalMotiveText = string.Empty;
+    }
+
+    [RelayCommand]
+    public async Task ConfirmDeletePointKeepTrazaAsync()
+    {
+        var item = TargetPointItem;
+        if (item == null || CurrentRouteDetails == null || FormRuta == null)
+        {
+            IsPointActionDialogVisible = false;
+            return;
+        }
+
+        try
+        {
+            int oldIndex = item.Indice;
+            CurrentRouteDetails.Puntos.Remove(item.Punto);
+            CurrentRouteDetails.Puntos = new List<PuntoRuta>(CurrentRouteDetails.Puntos);
+
+            CurrentPuntoItems.Clear();
+            for (int i = 0; i < CurrentRouteDetails.Puntos.Count; i++)
+            {
+                CurrentPuntoItems.Add(new PuntoRutaItem(
+                    CurrentRouteDetails.Puntos[i],
+                    i + 1,
+                    OpenPhotoViewer,
+                    RequestPointAction,
+                    FocusMapOnPunto,
+                    RequestDeletePunto));
+            }
+
+            OnPropertyChanged(nameof(CurrentRouteDetails));
+            OnPropertyChanged(nameof(CurrentPuntoItems));
+
+            if (IsPhotoViewerOpen && CurrentViewingPhotoPoint == item)
+            {
+                ClosePhotoViewer();
+            }
+
+            IsPointActionDialogVisible = false;
+            await SaveRouteDetailsAndStayInFormAsync($"Punto #{oldIndex} eliminado (traza GPS conservada)");
+        }
+        catch (Exception ex)
+        {
+            StatusBanner = $"Error al eliminar punto: {ex.Message}";
+            IsBannerVisible = true;
+        }
+    }
+
+    [RelayCommand]
+    public async Task ConfirmReplacePhotoWithMotiveAsync()
+    {
+        var item = TargetPointItem;
+        if (item == null || CurrentRouteDetails == null || FormRuta == null)
+        {
+            IsPointActionDialogVisible = false;
+            return;
+        }
+
+        try
+        {
+            string motivo = string.IsNullOrWhiteSpace(RemovalMotiveText)
+                ? "Fotografía retirada por moderación"
+                : RemovalMotiveText.Trim();
+
+            string puntoInfo = $"Punto #{item.Indice} ({item.CoordenadasTexto})";
+            byte[] jpgBytes = ImageGeneratorService.GenerateMotiveJpgBytes(motivo, puntoInfo);
+
+            StatusBanner = "Subiendo imagen de moderación a Cloudinary...";
+            IsBannerVisible = true;
+
+            string cleanRouteId = (FormRuta.Id ?? "RUTA").Trim();
+            int pointId = item.Punto.Id > 0 ? item.Punto.Id : item.Indice;
+            long ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            string publicId = $"{cleanRouteId}_{pointId}_motivo_{ts}";
+
+            string? cloudUrl = await _cloudinaryService.UploadImageAsync(jpgBytes, publicId, "rutas_senderismo");
+            if (string.IsNullOrWhiteSpace(cloudUrl))
+            {
+                StatusBanner = "Error: No se pudo subir el archivo JPG a Cloudinary. Verifique su conexión a internet.";
+                IsBannerVisible = true;
+                return;
+            }
+
+            item.Punto.FotoPath = cloudUrl;
+
+            using (var ms = new MemoryStream(jpgBytes))
+            {
+                item.FotoBitmap = new Avalonia.Media.Imaging.Bitmap(ms);
+            }
+            item.NotifyFotoChanged();
+
+            if (CurrentViewingPhotoPoint == item)
+            {
+                CurrentViewingPhotoPoint.FotoBitmap = item.FotoBitmap;
+            }
+
+            IsPointActionDialogVisible = false;
+            IsMotiveInputVisible = false;
+            await SaveRouteDetailsAndStayInFormAsync($"Fotografía del Punto #{item.Indice} sustituida por motivo: \"{motivo}\" (Cloudinary JPG)");
+        }
+        catch (Exception ex)
+        {
+            StatusBanner = $"Error al sustituir fotografía: {ex.Message}";
+            IsBannerVisible = true;
+        }
+    }
+
+    private async Task SaveRouteDetailsAndStayInFormAsync(string actionSummary)
+    {
+        if (FormRuta == null || CurrentRouteDetails == null) return;
+
+        try
+        {
+            IsLoading = true;
+
+            // 1. Serializar y encriptar detalles de la ruta (incluyendo el objeto 'ruta' para compatibilidad total con la app senderista)
+            string json = CryptoService.SerializeRouteDetails(CurrentRouteDetails, FormRuta);
+            string encrypted = CryptoService.EncryptString(json);
+            FormRuta.DatosEncriptados = encrypted;
+
+            // 2. Sincronizar en memoria en _allRutas y SelectedRuta
+            var existingRuta = _allRutas.FirstOrDefault(r => string.Equals(r.Id, FormRuta.Id, StringComparison.OrdinalIgnoreCase));
+            if (existingRuta != null)
+            {
+                existingRuta.DatosEncriptados = encrypted;
+                existingRuta.Agrupacion = FormRuta.Agrupacion;
+                existingRuta.Nombre = FormRuta.Nombre;
+            }
+            if (SelectedRuta != null && string.Equals(SelectedRuta.Id, FormRuta.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                SelectedRuta.DatosEncriptados = encrypted;
+                SelectedRuta.Agrupacion = FormRuta.Agrupacion;
+            }
+
+            // 3. Persistir a PostgreSQL (vía PATCH) y a SQLite (vía Upsert)
+            bool apiSaved = await _repository.SaveRutaAsync(existingRuta ?? FormRuta);
+
+            // 4. Asegurar que permanecemos en la Ficha / Formulario de la Ruta
+            SelectedTabIndex = 1;
+
+            StatusBanner = apiSaved
+                ? $"{actionSummary} • Sincronizado en PostgreSQL (Neon Cloud) y SQLite."
+                : $"{actionSummary} • Guardado en caché local SQLite (sin conexión API).";
+            IsBannerVisible = true;
+        }
+        catch (Exception ex)
+        {
+            StatusBanner = $"Error al sincronizar ruta: {ex.Message}";
+            IsBannerVisible = true;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task SaveCurrentRouteAsync()
+    {
+        await SaveRouteDetailsAndStayInFormAsync("Ruta guardada");
+    }
+
+    [RelayCommand]
+    public void RequestRemovePhoto(PuntoRutaItem? item)
+    {
+        RequestPointAction(item);
+    }
+
+    public void OnMapPointSelected(PuntoRuta punto)
+    {
+        var item = CurrentPuntoItems.FirstOrDefault(p => p.Punto == punto ||
+            (Math.Abs(p.Latitud - punto.Latitud) < 0.00001 && Math.Abs(p.Longitud - punto.Longitud) < 0.00001));
+        if (item != null && item.TieneFoto)
+        {
+            OpenPhotoViewer(item);
+        }
+    }
+
+    [ObservableProperty]
+    private bool _isRouteDetailsVisible = true;
+
+    partial void OnIsRouteDetailsVisibleChanged(bool value)
+    {
+        OnPropertyChanged(nameof(RouteDetailsToggleText));
+    }
+
+    public string RouteDetailsToggleText => IsRouteDetailsVisible ? "◀ Ocultar Ficha" : "▶ Ver Ficha de Ruta";
+
+    [RelayCommand]
+    public void ToggleRouteDetails()
+    {
+        IsRouteDetailsVisible = !IsRouteDetailsVisible;
+    }
+
+    [RelayCommand]
+    public void OpenOpenStreetMapWeb()
+    {
+        try
+        {
+            double centerLat = FormRuta?.LatitudOrig ?? 25.6866;
+            double centerLon = FormRuta?.LongitudOrig ?? -100.3161;
+            if (CurrentRouteDetails?.Traza != null && CurrentRouteDetails.Traza.Count > 0)
+            {
+                centerLat = CurrentRouteDetails.Traza.Average(t => t.Latitud);
+                centerLon = CurrentRouteDetails.Traza.Average(t => t.Longitud);
+            }
+            string url = FormattableString.Invariant($"https://www.openstreetmap.org/#map=14/{centerLat:F5}/{centerLon:F5}");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusBanner = $"No se pudo abrir OpenStreetMap en el navegador: {ex.Message}";
+            IsBannerVisible = true;
+        }
     }
 
     partial void OnSelectedAgrupacionChanged(Agrupacion? value)
@@ -714,6 +1240,83 @@ public partial class DashboardViewModel : ViewModelBase
         }
     }
 
+    public bool HasSelectedRecord
+    {
+        get
+        {
+            return CurrentTable switch
+            {
+                ActiveTable.Senderistas => SelectedSenderista != null,
+                ActiveTable.Rutas => SelectedRuta != null,
+                ActiveTable.Agrupaciones => SelectedAgrupacion != null,
+                ActiveTable.Invitaciones => SelectedInvitacion != null,
+                ActiveTable.Participantes => SelectedParticipante != null,
+                ActiveTable.FrasesDificultad => SelectedFraseDificultad != null,
+                ActiveTable.RequisitosSenderismo => SelectedRequisitoSenderismo != null,
+                _ => false
+            };
+        }
+    }
+
+    public string FormTitle
+    {
+        get
+        {
+            if (CurrentTable == ActiveTable.Rutas)
+            {
+                var routeName = FormRuta?.Nombre?.Trim();
+                if (string.IsNullOrWhiteSpace(routeName))
+                {
+                    routeName = FormRuta?.Id?.Trim();
+                }
+
+                if (!string.IsNullOrWhiteSpace(routeName))
+                {
+                    return $"Detalle y Edición: {routeName}";
+                }
+                return IsNewRecord ? "Detalle y Edición: Nueva Ruta" : "Detalle y Edición: Ruta";
+            }
+
+            if (CurrentTable == ActiveTable.Senderistas)
+            {
+                var name = FormSenderista?.Nombre?.Trim();
+                if (string.IsNullOrWhiteSpace(name)) name = FormSenderista?.Email?.Trim();
+                return !string.IsNullOrWhiteSpace(name) ? $"Detalle y Edición: {name}" : "Detalle y Edición: Senderista";
+            }
+
+            if (CurrentTable == ActiveTable.Agrupaciones)
+            {
+                var name = FormAgrupacion?.Nombre?.Trim();
+                return !string.IsNullOrWhiteSpace(name) ? $"Detalle y Edición: {name}" : (IsNewRecord ? "Detalle y Edición: Nueva Agrupación" : "Detalle y Edición: Agrupación");
+            }
+
+            if (CurrentTable == ActiveTable.Invitaciones)
+            {
+                var name = FormInvitacion?.Titulo?.Trim();
+                if (string.IsNullOrWhiteSpace(name)) name = FormInvitacion?.IdInvitacion?.Trim();
+                return !string.IsNullOrWhiteSpace(name) ? $"Detalle y Edición: {name}" : (IsNewRecord ? "Detalle y Edición: Nueva Invitación" : "Detalle y Edición: Invitación");
+            }
+
+            if (CurrentTable == ActiveTable.Participantes)
+            {
+                var name = FormParticipante?.EmailSenderista?.Trim();
+                return !string.IsNullOrWhiteSpace(name) ? $"Detalle y Edición: {name}" : (IsNewRecord ? "Detalle y Edición: Nuevo Participante" : "Detalle y Edición: Participante");
+            }
+
+            if (CurrentTable == ActiveTable.FrasesDificultad)
+            {
+                return IsNewRecord ? "Detalle y Edición: Nueva Frase" : "Detalle y Edición: Frases Dificultad";
+            }
+
+            if (CurrentTable == ActiveTable.RequisitosSenderismo)
+            {
+                return IsNewRecord ? "Detalle y Edición: Nuevo Requisito" : "Detalle y Edición: Requisitos Senderismo";
+            }
+
+            return "Detalle y Edición";
+        }
+    }
+
     public string RecordNavigationStatus
     {
         get
@@ -797,6 +1400,53 @@ public partial class DashboardViewModel : ViewModelBase
         UpdateNavigationState();
     }
 
+    public bool CanDeleteSelected
+    {
+        get
+        {
+            return CurrentTable switch
+            {
+                ActiveTable.Senderistas =>
+                    SelectedSenderista != null &&
+                    !string.Equals(SelectedSenderista.Rol, "O", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(SelectedSenderista.Email, CurrentUserEmail, StringComparison.OrdinalIgnoreCase) &&
+                    !(!string.IsNullOrWhiteSpace(_authService.CurrentSession?.Telefono) && string.Equals(SelectedSenderista.Telefono?.Trim(), _authService.CurrentSession?.Telefono?.Trim(), StringComparison.OrdinalIgnoreCase)),
+                ActiveTable.Rutas => SelectedRuta != null,
+                ActiveTable.Agrupaciones => SelectedAgrupacion != null,
+                ActiveTable.Invitaciones => SelectedInvitacion != null,
+                ActiveTable.Participantes => SelectedParticipante != null,
+                ActiveTable.FrasesDificultad => SelectedFraseDificultad != null,
+                ActiveTable.RequisitosSenderismo => SelectedRequisitoSenderismo != null,
+                _ => false
+            };
+        }
+    }
+
+    public bool CanDeleteFormRecord
+    {
+        get
+        {
+            if (IsNewRecord) return false;
+
+            return CurrentTable switch
+            {
+                ActiveTable.Senderistas =>
+                    !string.IsNullOrWhiteSpace(FormSenderista.Email) &&
+                    !string.Equals(FormSenderista.Rol, "O", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(_originalSenderistaRole, "O", StringComparison.OrdinalIgnoreCase) &&
+                    !IsEditingSelf &&
+                    !string.Equals(FormSenderista.Email, CurrentUserEmail, StringComparison.OrdinalIgnoreCase),
+                ActiveTable.Rutas => !string.IsNullOrWhiteSpace(FormRuta.Id),
+                ActiveTable.Agrupaciones => !string.IsNullOrWhiteSpace(FormAgrupacion.IdAgrupacion),
+                ActiveTable.Invitaciones => !string.IsNullOrWhiteSpace(FormInvitacion.IdInvitacion),
+                ActiveTable.Participantes => !string.IsNullOrWhiteSpace(FormParticipante.IdInvitacion) && !string.IsNullOrWhiteSpace(FormParticipante.EmailSenderista),
+                ActiveTable.FrasesDificultad => !string.IsNullOrWhiteSpace(FormFraseDificultad.Id),
+                ActiveTable.RequisitosSenderismo => !string.IsNullOrWhiteSpace(FormRequisitoSenderismo.Id),
+                _ => false
+            };
+        }
+    }
+
     public void UpdateNavigationState()
     {
         OnPropertyChanged(nameof(CurrentRecordIndex));
@@ -804,6 +1454,11 @@ public partial class DashboardViewModel : ViewModelBase
         OnPropertyChanged(nameof(RecordNavigationStatus));
         OnPropertyChanged(nameof(CanNavigatePrevious));
         OnPropertyChanged(nameof(CanNavigateNext));
+        OnPropertyChanged(nameof(CanDeleteSelected));
+        OnPropertyChanged(nameof(CanDeleteFormRecord));
+        OnPropertyChanged(nameof(FormTitle));
+        OnPropertyChanged(nameof(HasSelectedRecord));
+        OnPropertyChanged(nameof(CanCreateNew));
     }
 
     [RelayCommand]
@@ -999,56 +1654,15 @@ public partial class DashboardViewModel : ViewModelBase
     [RelayCommand]
     public void NewRecord()
     {
-        if (CurrentTable == ActiveTable.Senderistas)
-        {
-            StatusBanner = "Los senderistas no se pueden dar de alta desde este panel. Los usuarios deben registrarse directamente desde la aplicación móvil.";
-            return;
-        }
-
-        IsNewRecord = true;
-        switch (CurrentTable)
-        {
-            case ActiveTable.Rutas:
-                FormRuta = new Ruta { Id = "RUTA-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmm"), Publico = true };
-                break;
-            case ActiveTable.Agrupaciones:
-                FormAgrupacion = new Agrupacion();
-                break;
-            case ActiveTable.Invitaciones:
-                FormInvitacion = new InvitacionRuta { IdInvitacion = "INV-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmm"), Estado = "Activa" };
-                break;
-            case ActiveTable.Participantes:
-                FormParticipante = new ParticipanteInvitacion { Estado = "Inscrito", FechaRegistro = DateTime.UtcNow.ToString("yyyy-MM-dd") };
-                break;
-            case ActiveTable.FrasesDificultad:
-                FormFraseDificultad = new FraseDificultad { Id = "FRASE-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmm"), Dificultad = "Moderada", Activa = true };
-                break;
-            case ActiveTable.RequisitosSenderismo:
-                FormRequisitoSenderismo = new RequisitoSenderismo { Id = "REQ-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmm"), Categoria = "Equipo Básico", EsObligatorio = true, Activo = true };
-                break;
-        }
-
-        SelectedTabIndex = 1; // Cambiar a pestaña Formulario
+        StatusBanner = "Esta aplicación no registra nuevos elementos; su función es únicamente auditar, revisar y ajustar registros existentes.";
     }
 
     [RelayCommand]
     public void EditSelected()
     {
-        bool hasSelection = CurrentTable switch
+        if (!HasSelectedRecord)
         {
-            ActiveTable.Senderistas => SelectedSenderista != null,
-            ActiveTable.Rutas => SelectedRuta != null,
-            ActiveTable.Agrupaciones => SelectedAgrupacion != null,
-            ActiveTable.Invitaciones => SelectedInvitacion != null,
-            ActiveTable.Participantes => SelectedParticipante != null,
-            ActiveTable.FrasesDificultad => SelectedFraseDificultad != null,
-            ActiveTable.RequisitosSenderismo => SelectedRequisitoSenderismo != null,
-            _ => false
-        };
-
-        if (!hasSelection)
-        {
-            StatusBanner = "Seleccione un registro de la lista para editar.";
+            StatusBanner = "Debe seleccionar un registro de la lista antes de consultar o editar en el formulario.";
             return;
         }
 
@@ -1072,6 +1686,29 @@ public partial class DashboardViewModel : ViewModelBase
                         StatusBanner = "El correo del senderista es obligatorio.";
                         return;
                     }
+
+                    // Validación de seguridad para Rol 'O':
+                    // Un usuario con rol de 'O' no puede cambiarse el rol a sí mismo ni bloquearse
+                    if (IsEditingSelf && (CurrentRoleCode == "O" || string.Equals(_originalSenderistaRole, "O", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        if (!string.Equals(FormSenderista.Rol, "O", StringComparison.OrdinalIgnoreCase))
+                        {
+                            FormSenderista.Rol = "O";
+                            OnPropertyChanged(nameof(SelectedRoleOption));
+                            NotifySenderistaRoleSecurityProperties();
+                            StatusBanner = "Acción denegada: Un usuario con rol 'O' no puede cambiarse el rol a sí mismo.";
+                            return;
+                        }
+
+                        if (FormSenderista.Bloqueado)
+                        {
+                            FormSenderista.Bloqueado = false;
+                            NotifySenderistaRoleSecurityProperties();
+                            StatusBanner = "Acción denegada: Un usuario con rol 'O' no puede bloquearse a sí mismo.";
+                            return;
+                        }
+                    }
+
 
                     Agrupacion? targetAgrupacion = null;
                     if (string.Equals(FormSenderista.Rol, "A", StringComparison.OrdinalIgnoreCase))
@@ -1137,7 +1774,16 @@ public partial class DashboardViewModel : ViewModelBase
                         _originalSenderistaRole = FormSenderista.Rol;
                         _originalSenderistaIdAgrupacion = FormSenderista.IdAgrupacion;
 
-                        if (string.Equals(FormSenderista.Rol, "A", StringComparison.OrdinalIgnoreCase) && targetAgrupacion != null)
+                        if (FormSenderista.Bloqueado)
+                        {
+                            var (delParts, delInvs) = await CleanupBlockedUserFutureActivitiesAsync(FormSenderista);
+                            string cleanupDetails = (delParts > 0 || delInvs > 0)
+                                ? $" Se eliminaron {delParts} participación(es) y {delInvs} convocatoria(s) futuras asociadas al usuario. El historial anterior se conservó para estadísticas."
+                                : " No se encontraron participaciones ni convocatorias futuras asociadas. El historial anterior se conservó para estadísticas.";
+
+                            StatusBanner = $"Senderista bloqueado exitosamente.{cleanupDetails}";
+                        }
+                        else if (string.Equals(FormSenderista.Rol, "A", StringComparison.OrdinalIgnoreCase) && targetAgrupacion != null)
                         {
                             StatusBanner = $"Senderista guardado con éxito. Ahora es administrador de la agrupación '{targetAgrupacion.Nombre}' y ambas tablas han sido actualizadas.";
                         }
@@ -1149,12 +1795,47 @@ public partial class DashboardViewModel : ViewModelBase
                     break;
 
                 case ActiveTable.Rutas:
-                    if (string.IsNullOrWhiteSpace(FormRuta.Id) || string.IsNullOrWhiteSpace(FormRuta.Nombre))
+                    if (string.IsNullOrWhiteSpace(FormRuta.Id))
                     {
-                        StatusBanner = "El ID y Nombre de la ruta son obligatorios.";
+                        StatusBanner = "El ID de la ruta es obligatorio.";
                         return;
                     }
-                    success = await _repository.SaveRutaAsync(FormRuta);
+
+                    // Aseguramos serializar y sincronizar los datos encriptados modificados (puntos, traza, fotos)
+                    if (CurrentRouteDetails != null)
+                    {
+                        string json = CryptoService.SerializeRouteDetails(CurrentRouteDetails, FormRuta);
+                        FormRuta.DatosEncriptados = CryptoService.EncryptString(json);
+                    }
+
+                    var existingRuta = _allRutas.FirstOrDefault(r => string.Equals(r.Id, FormRuta.Id, StringComparison.OrdinalIgnoreCase));
+                    if (existingRuta != null)
+                    {
+                        existingRuta.Agrupacion = FormRuta.Agrupacion;
+                        existingRuta.DatosEncriptados = FormRuta.DatosEncriptados;
+                        existingRuta.Nombre = FormRuta.Nombre;
+                        success = await _repository.SaveRutaAsync(existingRuta);
+                        FormRuta = existingRuta.Clone();
+                        if (SelectedRuta != null && string.Equals(SelectedRuta.Id, existingRuta.Id, StringComparison.OrdinalIgnoreCase))
+                        {
+                            SelectedRuta.Agrupacion = existingRuta.Agrupacion;
+                            SelectedRuta.DatosEncriptados = existingRuta.DatosEncriptados;
+                        }
+                    }
+                    else
+                    {
+                        success = await _repository.SaveRutaAsync(FormRuta);
+                    }
+
+                    if (success)
+                    {
+                        StatusBanner = $"Ruta '{FormRuta.Nombre}' sincronizada con éxito en PostgreSQL y SQLite.";
+                    }
+                    else
+                    {
+                        StatusBanner = $"Ruta '{FormRuta.Nombre}' guardada solo en caché local SQLite (la API no confirmó el guardado).";
+                    }
+                    IsBannerVisible = true;
                     break;
 
                 case ActiveTable.Agrupaciones:
@@ -1206,8 +1887,15 @@ public partial class DashboardViewModel : ViewModelBase
             if (success)
             {
                 StatusBanner = "Registro guardado exitosamente en API y base de datos local SQLite.";
-                await LoadCurrentTableDataAsync();
-                SelectedTabIndex = 0; // Regresar al Grid
+                if (CurrentTable != ActiveTable.Rutas)
+                {
+                    await LoadCurrentTableDataAsync();
+                    SelectedTabIndex = 0; // Regresar al Grid
+                }
+                else
+                {
+                    SelectedTabIndex = 1; // Para Rutas, PERMANECER en la Ficha de Ruta para continuar editando
+                }
             }
         }
         catch (Exception ex)
@@ -1218,6 +1906,152 @@ public partial class DashboardViewModel : ViewModelBase
         {
             IsLoading = false;
         }
+    }
+
+    /// <summary>
+    /// Compara dos números de teléfono normalizados por sus dígitos o últimos 10 dígitos.
+    /// </summary>
+    public static bool PhonesMatch(string? phone1, string? phone2)
+    {
+        if (string.IsNullOrWhiteSpace(phone1) || string.IsNullOrWhiteSpace(phone2)) return false;
+        string digits1 = new string(phone1.Where(char.IsDigit).ToArray());
+        string digits2 = new string(phone2.Where(char.IsDigit).ToArray());
+        if (string.IsNullOrEmpty(digits1) || string.IsNullOrEmpty(digits2)) return false;
+        if (digits1 == digits2) return true;
+        if (digits1.Length >= 10 && digits2.Length >= 10)
+        {
+            return digits1.Substring(digits1.Length - 10) == digits2.Substring(digits2.Length - 10);
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Determina si una fecha/hora corresponde a una salida en el futuro.
+    /// Las fechas pasadas retornan false para preservarlas con propósitos estadísticos.
+    /// </summary>
+    public static bool IsFutureDate(string? dateStr)
+    {
+        if (string.IsNullOrWhiteSpace(dateStr)) return false;
+
+        // Formatos ISO 8601 con offset o Z
+        if (DateTimeOffset.TryParse(dateStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dto))
+        {
+            if (dateStr.Contains(':') || dateStr.Contains('T'))
+            {
+                return dto > DateTimeOffset.Now;
+            }
+            return dto.Date >= DateTime.Today;
+        }
+
+        // Formatos locales o estándar DateTime
+        if (DateTime.TryParse(dateStr, System.Globalization.CultureInfo.CurrentCulture, System.Globalization.DateTimeStyles.None, out var dt) ||
+            DateTime.TryParse(dateStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out dt))
+        {
+            if (dateStr.Contains(':') || dateStr.Contains('T'))
+            {
+                return dt > DateTime.Now;
+            }
+            return dt.Date >= DateTime.Today;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Cuando un usuario es bloqueado:
+    /// 1. Se eliminan sus inscripciones a salidas con fecha futura (participantes_invitacion). Las pasadas se conservan por estadísticas.
+    /// 2. Se eliminan las invitaciones creadas por dicho usuario con fecha futura (invitaciones_ruta, matching por teléfono o email).
+    ///    Antes de borrar la invitación, se eliminan sus participantes por integridad referencial. Las pasadas se conservan por estadísticas.
+    /// </summary>
+    public async Task<(int DeletedParticipaciones, int DeletedInvitaciones)> CleanupBlockedUserFutureActivitiesAsync(Senderista senderista)
+    {
+        int deletedParts = 0;
+        int deletedInvs = 0;
+
+        try
+        {
+            var allInvitaciones = await _repository.GetInvitacionesAsync();
+            var allParticipantes = await _repository.GetParticipantesAsync();
+
+            string userEmail = senderista.Email?.Trim() ?? string.Empty;
+            string userTel = senderista.Telefono?.Trim() ?? string.Empty;
+
+            // 1. Verificar si está inscrito en participantes con fecha futura.
+            var futureParticipations = allParticipantes.Where(p =>
+            {
+                bool isUser = (!string.IsNullOrEmpty(userEmail) && string.Equals(p.EmailSenderista, userEmail, StringComparison.OrdinalIgnoreCase)) ||
+                              (!string.IsNullOrEmpty(userTel) && PhonesMatch(p.TelefonoSenderista, userTel));
+                if (!isUser) return false;
+
+                var inv = allInvitaciones.FirstOrDefault(i => string.Equals(i.IdInvitacion, p.IdInvitacion, StringComparison.OrdinalIgnoreCase));
+                if (inv == null) return false;
+
+                string? dateStr = inv.FechaSalida ?? inv.FechaHoraSalida;
+                return IsFutureDate(dateStr);
+            }).ToList();
+
+            foreach (var part in futureParticipations)
+            {
+                try
+                {
+                    await _repository.DeleteParticipanteAsync(part.IdInvitacion, part.EmailSenderista);
+                    deletedParts++;
+                }
+                catch { }
+            }
+
+            // 2. Si creó invitaciones (asociado al teléfono del senderista o email del organizador) con fecha futura.
+            var futureInvitationsCreated = allInvitaciones.Where(inv =>
+            {
+                bool isCreator = (!string.IsNullOrEmpty(userTel) && PhonesMatch(inv.Telefono, userTel)) ||
+                                 (!string.IsNullOrEmpty(userEmail) && string.Equals(inv.EmailOrganizador, userEmail, StringComparison.OrdinalIgnoreCase));
+                if (!isCreator) return false;
+
+                string? dateStr = inv.FechaSalida ?? inv.FechaHoraSalida;
+                return IsFutureDate(dateStr);
+            }).ToList();
+
+            foreach (var inv in futureInvitationsCreated)
+            {
+                try
+                {
+                    // Eliminar primero participantes inscritos a esta invitación (integridad referencial)
+                    var enrolled = allParticipantes.Where(p => string.Equals(p.IdInvitacion, inv.IdInvitacion, StringComparison.OrdinalIgnoreCase)).ToList();
+                    foreach (var ep in enrolled)
+                    {
+                        try
+                        {
+                            await _repository.DeleteParticipanteAsync(ep.IdInvitacion, ep.EmailSenderista);
+                        }
+                        catch { }
+                    }
+
+                    await _repository.DeleteInvitacionAsync(inv.IdInvitacion);
+                    deletedInvs++;
+                }
+                catch { }
+            }
+
+            // Sincronizar listas en memoria si se eliminó algún registro
+            if (deletedParts > 0 || deletedInvs > 0)
+            {
+                _allInvitaciones = await _repository.GetInvitacionesAsync();
+                InvitacionesCount = _allInvitaciones.Count;
+                _allParticipantes = await _repository.GetParticipantesAsync();
+                ParticipantesCount = _allParticipantes.Count;
+
+                if (CurrentTable == ActiveTable.Invitaciones || CurrentTable == ActiveTable.Participantes)
+                {
+                    ApplyCurrentFilter();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error en limpieza de actividades de senderista bloqueado: {ex.Message}");
+        }
+
+        return (deletedParts, deletedInvs);
     }
 
     [RelayCommand]
@@ -1281,6 +2115,12 @@ public partial class DashboardViewModel : ViewModelBase
                     return;
                 }
                 var s = SelectedSenderista;
+                if (string.Equals(s.Rol, "O", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(s.Email, CurrentUserEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    StatusBanner = "Acción denegada: Un usuario con rol 'O' (Dueño / Super Administrador) no puede ser eliminado del sistema.";
+                    return;
+                }
                 ShowDeleteConfirmation(
                     "Confirmar Eliminación de Senderista",
                     $"¿Está seguro de que desea eliminar permanentemente al senderista '{s.Nombre}' ({s.Email})?\n\nEsta operación eliminará el registro tanto en la nube (PostgREST) como en el caché local de SQLite.",
@@ -1472,6 +2312,14 @@ public partial class DashboardViewModel : ViewModelBase
         {
             case ActiveTable.Senderistas:
                 if (string.IsNullOrWhiteSpace(FormSenderista.Email)) return;
+                if (string.Equals(FormSenderista.Rol, "O", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(_originalSenderistaRole, "O", StringComparison.OrdinalIgnoreCase) ||
+                    IsEditingSelf ||
+                    string.Equals(FormSenderista.Email, CurrentUserEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    StatusBanner = "Acción denegada: Un usuario con rol 'O' (Dueño / Super Administrador) no puede ser eliminado del sistema.";
+                    return;
+                }
                 var email = FormSenderista.Email;
                 var nombre = FormSenderista.Nombre;
                 ShowDeleteConfirmation(

@@ -97,12 +97,13 @@
                 </StackPanel>
 
                 <StackPanel Spacing="6">
-                    <TextBlock Text="Contraseña"
+                    <TextBlock Text="Contraseña (Últimos 4 dígitos del teléfono)"
                                FontSize="12"
                                FontWeight="Medium"
                                Foreground="#CBD5E1" />
                     <TextBox Text="{Binding Password, Mode=TwoWay}"
-                             PasswordChar="●" />
+                             PasswordChar="●"
+                             Watermark="Últimos 4 dígitos" />
                 </StackPanel>
 
                 <!-- Actions -->

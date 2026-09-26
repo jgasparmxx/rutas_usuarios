@@ -154,18 +154,30 @@ public class DataRepository : IDataRepository
         bool apiSuccess = false;
         try
         {
-            await _apiClient.PostAsync<List<Ruta>>("/rutas", ruta, CurrentToken, upsert: true);
-            apiSuccess = true;
-            IsOnline = true;
+            // Intentar primero PATCH por ID (estándar REST en PostgREST para actualizar filas existentes)
+            bool patchOk = await _apiClient.PatchAsync($"/rutas?id=eq.{Uri.EscapeDataString(ruta.Id)}", ruta, CurrentToken);
+            if (patchOk)
+            {
+                apiSuccess = true;
+                IsOnline = true;
+            }
+            else
+            {
+                // Si PATCH devolvió false (ej: no encontró registro por id o es nueva), intentar POST con upsert
+                await _apiClient.PostAsync<List<Ruta>>("/rutas", ruta, CurrentToken, upsert: true);
+                apiSuccess = true;
+                IsOnline = true;
+            }
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"[DataRepository] Error al guardar ruta en API: {ex.Message}");
             IsOnline = false;
         }
 
         await _cacheService.UpsertRutaAsync(ruta);
         NotifyStatus(apiSuccess ? $"Ruta '{ruta.Nombre}' guardada en API y caché." : $"Ruta guardada en caché local.");
-        return true;
+        return apiSuccess;
     }
 
     public async Task<bool> DeleteRutaAsync(string id)

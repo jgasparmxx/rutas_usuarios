@@ -28,6 +28,7 @@ public partial class App : Application
         services.AddSingleton<IPostgrestApiClient, PostgrestApiClient>();
         services.AddSingleton<IAuthService, AuthService>();
         services.AddSingleton<IDataRepository, DataRepository>();
+        services.AddSingleton<ICloudinaryService, CloudinaryService>();
 
         // ViewModels
         services.AddTransient<MainWindowViewModel>();

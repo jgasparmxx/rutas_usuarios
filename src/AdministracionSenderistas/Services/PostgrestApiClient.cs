@@ -31,7 +31,18 @@ public class PostgrestApiClient : IPostgrestApiClient
 
     public PostgrestApiClient(HttpClient? httpClient = null)
     {
-        _httpClient = httpClient ?? new HttpClient();
+        if (httpClient != null)
+        {
+            _httpClient = httpClient;
+        }
+        else
+        {
+            var handler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+            };
+            _httpClient = new HttpClient(handler);
+        }
         _httpClient.BaseAddress = new Uri(BaseUrl);
         _httpClient.Timeout = TimeSpan.FromSeconds(20);
         _httpClient.DefaultRequestHeaders.Accept.Clear();
@@ -106,7 +117,23 @@ public class PostgrestApiClient : IPostgrestApiClient
             return req;
         }, token);
 
-        return response.IsSuccessStatusCode;
+        if (!response.IsSuccessStatusCode)
+        {
+            string err = string.Empty;
+            try { err = await response.Content.ReadAsStringAsync(); } catch { }
+            Console.WriteLine($"[PostgrestApiClient] PATCH {endpointAndQuery} failed with {(int)response.StatusCode} ({response.ReasonPhrase}): {err}");
+            return false;
+        }
+
+        string respBody = string.Empty;
+        try { respBody = await response.Content.ReadAsStringAsync(); } catch { }
+        if (respBody.Trim() == "[]")
+        {
+            Console.WriteLine($"[PostgrestApiClient] PATCH {endpointAndQuery} matched 0 rows.");
+            return false;
+        }
+
+        return true;
     }
 
     public async Task<bool> DeleteAsync(string endpointAndQuery, string token)

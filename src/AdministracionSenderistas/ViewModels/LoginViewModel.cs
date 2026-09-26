@@ -40,7 +40,7 @@ public partial class LoginViewModel : ViewModelBase
 
         if (string.IsNullOrWhiteSpace(Identifier) || string.IsNullOrWhiteSpace(Password))
         {
-            ErrorMessage = "Debe ingresar el correo y la contraseña.";
+            ErrorMessage = "Debe ingresar el correo y los últimos 4 dígitos de su teléfono.";
             return;
         }
 

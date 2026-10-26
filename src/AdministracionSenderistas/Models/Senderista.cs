@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace AdministracionSenderistas.Models;
@@ -128,9 +128,9 @@ public partial class Senderista : ObservableObject
     [JsonIgnore]
     public string RolDescripcion => Rol switch
     {
-        "O" => "Dueño / Superadmin",
+        "O" => "DueÃ±o / Superadmin",
         "A" => "Administrador",
-        "G" => "Guía",
+        "G" => "GuÃ­a",
         "S" => "Senderista",
         _ => Rol
     };
@@ -138,6 +138,13 @@ public partial class Senderista : ObservableObject
     [JsonIgnore]
     public bool IsSuperAdmin => Rol == "O";
 
+        private string? _fupdate;
+    [JsonPropertyName("fupdate")]
+    public string? Fupdate
+    {
+        get => _fupdate;
+        set => SetProperty(ref _fupdate, value);
+    }
     public Senderista Clone() => new()
     {
         Email = Email,
@@ -152,6 +159,8 @@ public partial class Senderista : ObservableObject
         TieneEnfermedadCronica = TieneEnfermedadCronica,
         Bloqueado = Bloqueado,
         NivelSenderista = NivelSenderista,
-        MinimoLongitud = MinimoLongitud
+        MinimoLongitud = MinimoLongitud,
+        Fupdate = Fupdate
     };
 }
+

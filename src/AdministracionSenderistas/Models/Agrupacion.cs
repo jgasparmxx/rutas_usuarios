@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using AdministracionSenderistas.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace AdministracionSenderistas.Models;
@@ -85,6 +86,45 @@ public partial class Agrupacion : ObservableObject
         set => SetProperty(ref _clave, value);
     }
 
+    private string? _fupdate;
+    [JsonPropertyName("fupdate")]
+    public string? Fupdate
+    {
+        get => _fupdate;
+        set => SetProperty(ref _fupdate, value);
+    }
+
+    private byte[]? _logo;
+    [JsonPropertyName("logo")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    [JsonConverter(typeof(PostgresByteaJsonConverter))]
+    public byte[]? Logo
+    {
+        get => _logo;
+        set
+        {
+            if (SetProperty(ref _logo, value))
+            {
+                OnPropertyChanged(nameof(HasLogo));
+                OnPropertyChanged(nameof(TieneLogoTexto));
+                OnPropertyChanged(nameof(TieneLogoColor));
+                OnPropertyChanged(nameof(LogoSizeText));
+            }
+        }
+    }
+
+    [JsonIgnore]
+    public bool HasLogo => Logo != null && Logo.Length > 0;
+
+    [JsonIgnore]
+    public string TieneLogoTexto => HasLogo ? "🖼️ Sí" : "—";
+
+    [JsonIgnore]
+    public string TieneLogoColor => HasLogo ? "#10B981" : "#64748B";
+
+    [JsonIgnore]
+    public string LogoSizeText => HasLogo ? $"{Logo!.Length / 1024.0:F1} KB" : "Sin logo";
+
     public Agrupacion Clone() => new()
     {
         IdAgrupacion = IdAgrupacion,
@@ -96,6 +136,8 @@ public partial class Agrupacion : ObservableObject
         Descripcion = Descripcion,
         Ciudad = Ciudad,
         Contacto = Contacto,
-        Clave = Clave
+        Clave = Clave,
+        Fupdate = Fupdate,
+        Logo = Logo != null ? (byte[])Logo.Clone() : null
     };
 }

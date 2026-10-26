@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace AdministracionSenderistas.Models;
@@ -13,7 +13,7 @@ public partial class RequisitoSenderismo : ObservableObject
         set => SetProperty(ref _id, value);
     }
 
-    private string _categoria = "Equipo Básico";
+    private string _categoria = "Equipo BÃ¡sico";
     [JsonPropertyName("categoria")]
     public string Categoria
     {
@@ -53,6 +53,13 @@ public partial class RequisitoSenderismo : ObservableObject
         set => SetProperty(ref _activo, value);
     }
 
+        private string? _fupdate;
+    [JsonPropertyName("fupdate")]
+    public string? Fupdate
+    {
+        get => _fupdate;
+        set => SetProperty(ref _fupdate, value);
+    }
     public RequisitoSenderismo Clone() => new()
     {
         Id = Id,
@@ -60,6 +67,8 @@ public partial class RequisitoSenderismo : ObservableObject
         Requisito = Requisito,
         Descripcion = Descripcion,
         EsObligatorio = EsObligatorio,
-        Activo = Activo
+        Activo = Activo,
+        Fupdate = Fupdate
     };
 }
+

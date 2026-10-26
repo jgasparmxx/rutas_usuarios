@@ -66,7 +66,8 @@ public class SqliteCacheService : ISqliteCacheService
                 bloqueado INTEGER NOT NULL DEFAULT 0,
                 nivel_senderista TEXT,
                 minimo_longitud REAL DEFAULT 0,
-                updated_at TEXT
+                updated_at TEXT,
+                fupdate TEXT
             );
 
             CREATE TABLE IF NOT EXISTS cache_rutas (
@@ -95,17 +96,24 @@ public class SqliteCacheService : ISqliteCacheService
                 fecha_registro_nube TEXT,
                 datos_encriptados TEXT,
                 descripcion TEXT,
-                updated_at TEXT
+                updated_at TEXT,
+                fupdate TEXT
             );
 
             CREATE TABLE IF NOT EXISTS cache_agrupaciones (
                 id_agrupacion TEXT PRIMARY KEY,
                 nombre TEXT NOT NULL,
+                responsable TEXT,
+                telefono TEXT,
+                email TEXT,
+                fecha_creacion TEXT,
                 descripcion TEXT,
                 ciudad TEXT,
                 contacto TEXT,
                 clave TEXT,
-                updated_at TEXT
+                logo BLOB,
+                updated_at TEXT,
+                fupdate TEXT
             );
 
             CREATE TABLE IF NOT EXISTS cache_invitaciones (
@@ -119,7 +127,8 @@ public class SqliteCacheService : ISqliteCacheService
                 cupo_maximo INTEGER,
                 estado TEXT,
                 telefono TEXT,
-                updated_at TEXT
+                updated_at TEXT,
+                fupdate TEXT
             );
 
             CREATE TABLE IF NOT EXISTS cache_participantes (
@@ -138,7 +147,8 @@ public class SqliteCacheService : ISqliteCacheService
                 frase TEXT NOT NULL,
                 autor TEXT,
                 activa INTEGER NOT NULL DEFAULT 1,
-                updated_at TEXT
+                updated_at TEXT,
+                fupdate TEXT
             );
 
             CREATE TABLE IF NOT EXISTS cache_requisitos_senderismo (
@@ -148,7 +158,8 @@ public class SqliteCacheService : ISqliteCacheService
                 descripcion TEXT,
                 es_obligatorio INTEGER NOT NULL DEFAULT 1,
                 activo INTEGER NOT NULL DEFAULT 1,
-                updated_at TEXT
+                updated_at TEXT,
+                fupdate TEXT
             );
 
             CREATE TABLE IF NOT EXISTS cache_sync_meta (
@@ -161,7 +172,7 @@ public class SqliteCacheService : ISqliteCacheService
         cmd.CommandText = sql;
         await cmd.ExecuteNonQueryAsync();
 
-        // Migración segura para bases de datos existentes
+        // MigraciÃ³n segura para bases de datos existentes
         try
         {
             using var alterCmd = conn.CreateCommand();
@@ -180,6 +191,32 @@ public class SqliteCacheService : ISqliteCacheService
 
         try
         {
+            using var alterCmdLogo = conn.CreateCommand();
+            alterCmdLogo.CommandText = "ALTER TABLE cache_agrupaciones ADD COLUMN logo BLOB;";
+            await alterCmdLogo.ExecuteNonQueryAsync();
+        }
+        catch { }
+
+        string[] agrupacionesMigrations = new[]
+        {
+            "ALTER TABLE cache_agrupaciones ADD COLUMN responsable TEXT;",
+            "ALTER TABLE cache_agrupaciones ADD COLUMN telefono TEXT;",
+            "ALTER TABLE cache_agrupaciones ADD COLUMN email TEXT;",
+            "ALTER TABLE cache_agrupaciones ADD COLUMN fecha_creacion TEXT;"
+        };
+        foreach (var sqlCol in agrupacionesMigrations)
+        {
+            try
+            {
+                using var cmdCol = conn.CreateCommand();
+                cmdCol.CommandText = sqlCol;
+                await cmdCol.ExecuteNonQueryAsync();
+            }
+            catch { }
+        }
+
+        try
+        {
             using var alterCmd3 = conn.CreateCommand();
             alterCmd3.CommandText = "ALTER TABLE cache_invitaciones ADD COLUMN telefono TEXT;";
             await alterCmd3.ExecuteNonQueryAsync();
@@ -194,6 +231,27 @@ public class SqliteCacheService : ISqliteCacheService
         }
         catch { }
 
+                // Migracion para fupdate en todas las tablas
+        string[] fupdateMigrations = new[]
+        {
+            "ALTER TABLE cache_senderistas ADD COLUMN fupdate TEXT;",
+            "ALTER TABLE cache_rutas ADD COLUMN fupdate TEXT;",
+            "ALTER TABLE cache_agrupaciones ADD COLUMN fupdate TEXT;",
+            "ALTER TABLE cache_invitaciones ADD COLUMN fupdate TEXT;",
+            "ALTER TABLE cache_participantes ADD COLUMN fupdate TEXT;",
+            "ALTER TABLE cache_frases_dificultad ADD COLUMN fupdate TEXT;",
+            "ALTER TABLE cache_requisitos_senderismo ADD COLUMN fupdate TEXT;"
+        };
+        foreach (var sqlCol in fupdateMigrations)
+        {
+            try
+            {
+                using var cmdCol = conn.CreateCommand();
+                cmdCol.CommandText = sqlCol;
+                await cmdCol.ExecuteNonQueryAsync();
+            }
+            catch { }
+        }
         // Migraciones para cache_rutas
         string[] rutaColMigrations = new[]
         {
@@ -267,7 +325,7 @@ public class SqliteCacheService : ISqliteCacheService
         cmd.CommandText = @"
             SELECT email, nombre, telefono, rol, id_agrupacion, sexo,
                    fecha_nacimiento, a_quienes_avisar, a_quien_avisar_telefono1,
-                   tiene_enfermedad_cronica, bloqueado, nivel_senderista, minimo_longitud
+                   tiene_enfermedad_cronica, bloqueado, nivel_senderista, minimo_longitud, fupdate
             FROM cache_senderistas
             ORDER BY nombre ASC;
         ";
@@ -289,7 +347,8 @@ public class SqliteCacheService : ISqliteCacheService
                 TieneEnfermedadCronica = reader.IsDBNull(9) ? null : reader.GetString(9),
                 Bloqueado = reader.GetInt32(10) != 0,
                 NivelSenderista = reader.IsDBNull(11) ? null : reader.GetString(11),
-                MinimoLongitud = reader.IsDBNull(12) ? 0 : reader.GetDouble(12)
+                MinimoLongitud = reader.IsDBNull(12) ? 0 : reader.GetDouble(12),
+                Fupdate = reader.IsDBNull(13) ? null : reader.GetString(13)
             });
         }
         return list;
@@ -304,10 +363,10 @@ public class SqliteCacheService : ISqliteCacheService
         cmd.CommandText = @"
             INSERT INTO cache_senderistas
                 (email, nombre, telefono, rol, id_agrupacion, sexo, fecha_nacimiento,
-                 a_quienes_avisar, a_quien_avisar_telefono1, tiene_enfermedad_cronica, bloqueado, nivel_senderista, minimo_longitud, updated_at)
+                 a_quienes_avisar, a_quien_avisar_telefono1, tiene_enfermedad_cronica, bloqueado, nivel_senderista, minimo_longitud, updated_at, fupdate)
             VALUES
                 (@email, @nombre, @telefono, @rol, @id_agrupacion, @sexo, @fecha_nacimiento,
-                 @a_quienes_avisar, @a_quien_avisar_telefono1, @tiene_enfermedad_cronica, @bloqueado, @nivel_senderista, @minimo_longitud, @updated_at)
+                 @a_quienes_avisar, @a_quien_avisar_telefono1, @tiene_enfermedad_cronica, @bloqueado, @nivel_senderista, @minimo_longitud, @updated_at, @fupdate)
             ON CONFLICT(email) DO UPDATE SET
                 nombre = excluded.nombre,
                 telefono = excluded.telefono,
@@ -321,7 +380,8 @@ public class SqliteCacheService : ISqliteCacheService
                 bloqueado = excluded.bloqueado,
                 nivel_senderista = excluded.nivel_senderista,
                 minimo_longitud = excluded.minimo_longitud,
-                updated_at = excluded.updated_at;
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
         ";
 
         cmd.Parameters.AddWithValue("@email", item.Email);
@@ -338,8 +398,89 @@ public class SqliteCacheService : ISqliteCacheService
         cmd.Parameters.AddWithValue("@nivel_senderista", (object?)item.NivelSenderista ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@minimo_longitud", item.MinimoLongitud ?? 0);
         cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
 
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task UpsertManySenderistasAsync(IEnumerable<Senderista> items)
+    {
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var transaction = conn.BeginTransaction();
+        string cmdText = @"
+            INSERT INTO cache_senderistas
+                (email, nombre, telefono, rol, id_agrupacion, sexo, fecha_nacimiento,
+                 a_quienes_avisar, a_quien_avisar_telefono1, tiene_enfermedad_cronica, bloqueado, nivel_senderista, minimo_longitud, updated_at, fupdate)
+            VALUES
+                (@email, @nombre, @telefono, @rol, @id_agrupacion, @sexo, @fecha_nacimiento,
+                 @a_quienes_avisar, @a_quien_avisar_telefono1, @tiene_enfermedad_cronica, @bloqueado, @nivel_senderista, @minimo_longitud, @updated_at, @fupdate)
+            ON CONFLICT(email) DO UPDATE SET
+                nombre = excluded.nombre,
+                telefono = excluded.telefono,
+                rol = excluded.rol,
+                id_agrupacion = excluded.id_agrupacion,
+                sexo = excluded.sexo,
+                fecha_nacimiento = excluded.fecha_nacimiento,
+                a_quienes_avisar = excluded.a_quienes_avisar,
+                a_quien_avisar_telefono1 = excluded.a_quien_avisar_telefono1,
+                tiene_enfermedad_cronica = excluded.tiene_enfermedad_cronica,
+                bloqueado = excluded.bloqueado,
+                nivel_senderista = excluded.nivel_senderista,
+                minimo_longitud = excluded.minimo_longitud,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+        foreach (var item in items)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = cmdText;
+        cmd.CommandText = @"
+            INSERT INTO cache_senderistas
+                (email, nombre, telefono, rol, id_agrupacion, sexo, fecha_nacimiento,
+                 a_quienes_avisar, a_quien_avisar_telefono1, tiene_enfermedad_cronica, bloqueado, nivel_senderista, minimo_longitud, updated_at, fupdate)
+            VALUES
+                (@email, @nombre, @telefono, @rol, @id_agrupacion, @sexo, @fecha_nacimiento,
+                 @a_quienes_avisar, @a_quien_avisar_telefono1, @tiene_enfermedad_cronica, @bloqueado, @nivel_senderista, @minimo_longitud, @updated_at, @fupdate)
+            ON CONFLICT(email) DO UPDATE SET
+                nombre = excluded.nombre,
+                telefono = excluded.telefono,
+                rol = excluded.rol,
+                id_agrupacion = excluded.id_agrupacion,
+                sexo = excluded.sexo,
+                fecha_nacimiento = excluded.fecha_nacimiento,
+                a_quienes_avisar = excluded.a_quienes_avisar,
+                a_quien_avisar_telefono1 = excluded.a_quien_avisar_telefono1,
+                tiene_enfermedad_cronica = excluded.tiene_enfermedad_cronica,
+                bloqueado = excluded.bloqueado,
+                nivel_senderista = excluded.nivel_senderista,
+                minimo_longitud = excluded.minimo_longitud,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+
+        cmd.Parameters.AddWithValue("@email", item.Email);
+        cmd.Parameters.AddWithValue("@nombre", item.Nombre ?? string.Empty);
+        cmd.Parameters.AddWithValue("@telefono", (object?)item.Telefono ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@rol", item.Rol ?? "S");
+        cmd.Parameters.AddWithValue("@id_agrupacion", (object?)item.IdAgrupacion ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@sexo", (object?)item.Sexo ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@fecha_nacimiento", (object?)item.FechaNacimiento ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@a_quienes_avisar", (object?)item.AQuienesAvisar ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@a_quien_avisar_telefono1", (object?)item.AQuienAvisarTelefono1 ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@tiene_enfermedad_cronica", (object?)item.TieneEnfermedadCronica ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@bloqueado", item.Bloqueado ? 1 : 0);
+        cmd.Parameters.AddWithValue("@nivel_senderista", (object?)item.NivelSenderista ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@minimo_longitud", item.MinimoLongitud ?? 0);
+        cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
+        await SetLastSyncTimeAsync("senderistas");
     }
 
     public async Task DeleteSenderistaAsync(string email)
@@ -369,10 +510,10 @@ public class SqliteCacheService : ISqliteCacheService
         string insertSql = @"
             INSERT INTO cache_senderistas
                 (email, nombre, telefono, rol, id_agrupacion, sexo, fecha_nacimiento,
-                 a_quienes_avisar, a_quien_avisar_telefono1, tiene_enfermedad_cronica, bloqueado, nivel_senderista, minimo_longitud, updated_at)
+                 a_quienes_avisar, a_quien_avisar_telefono1, tiene_enfermedad_cronica, bloqueado, nivel_senderista, minimo_longitud, updated_at, fupdate)
             VALUES
                 (@email, @nombre, @telefono, @rol, @id_agrupacion, @sexo, @fecha_nacimiento,
-                 @a_quienes_avisar, @a_quien_avisar_telefono1, @tiene_enfermedad_cronica, @bloqueado, @nivel_senderista, @minimo_longitud, @updated_at);
+                 @a_quienes_avisar, @a_quien_avisar_telefono1, @tiene_enfermedad_cronica, @bloqueado, @nivel_senderista, @minimo_longitud, @updated_at, @fupdate);
         ";
 
         string now = DateTime.UtcNow.ToString("o");
@@ -395,6 +536,7 @@ public class SqliteCacheService : ISqliteCacheService
             cmd.Parameters.AddWithValue("@nivel_senderista", (object?)item.NivelSenderista ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@minimo_longitud", item.MinimoLongitud ?? 0);
             cmd.Parameters.AddWithValue("@updated_at", now);
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -415,7 +557,7 @@ public class SqliteCacheService : ISqliteCacheService
                    email_creador, telefono_creador, publico, agrupacion, dificultad, duracion_estimada,
                    duracion_segundos, desnivel_positivo, desnivel_negativo, contador_subidas, contador_bajadas,
                    conectividad, codigo, fecha_hora_inicio, fecha_hora_fin, fecha_registro_nube, datos_encriptados,
-                   descripcion
+                   descripcion, fupdate
             FROM cache_rutas
             ORDER BY nombre ASC;
         ";
@@ -449,7 +591,8 @@ public class SqliteCacheService : ISqliteCacheService
                 FechaHoraFin = reader.IsDBNull(21) ? null : reader.GetString(21),
                 FechaRegistroNube = reader.IsDBNull(22) ? null : reader.GetString(22),
                 DatosEncriptados = reader.IsDBNull(23) ? null : reader.GetString(23),
-                Descripcion = reader.IsDBNull(24) ? null : reader.GetString(24)
+                Descripcion = reader.IsDBNull(24) ? null : reader.GetString(24),
+                Fupdate = reader.IsDBNull(25) ? null : reader.GetString(25)
             });
         }
         return list;
@@ -499,7 +642,8 @@ public class SqliteCacheService : ISqliteCacheService
                 fecha_registro_nube = excluded.fecha_registro_nube,
                 datos_encriptados = excluded.datos_encriptados,
                 descripcion = excluded.descripcion,
-                updated_at = excluded.updated_at;
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
         ";
 
         cmd.Parameters.AddWithValue("@id", item.Id);
@@ -528,8 +672,137 @@ public class SqliteCacheService : ISqliteCacheService
         cmd.Parameters.AddWithValue("@datos_encriptados", (object?)item.DatosEncriptados ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@descripcion", (object?)item.Descripcion ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
 
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task UpsertManyRutasAsync(IEnumerable<Ruta> items)
+    {
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var transaction = conn.BeginTransaction();
+        string cmdText = @"
+            INSERT INTO cache_rutas
+                (id, nombre, fecha, distancia_gps, distancia_beacons, latitud_orig, longitud_orig,
+                 email_creador, telefono_creador, publico, agrupacion, dificultad, duracion_estimada,
+                 duracion_segundos, desnivel_positivo, desnivel_negativo, contador_subidas, contador_bajadas,
+                 conectividad, codigo, fecha_hora_inicio, fecha_hora_fin, fecha_registro_nube, datos_encriptados,
+                 descripcion, updated_at)
+            VALUES
+                (@id, @nombre, @fecha, @distancia_gps, @distancia_beacons, @latitud_orig, @longitud_orig,
+                 @email_creador, @telefono_creador, @publico, @agrupacion, @dificultad, @duracion_estimada,
+                 @duracion_segundos, @desnivel_positivo, @desnivel_negativo, @contador_subidas, @contador_bajadas,
+                 @conectividad, @codigo, @fecha_hora_inicio, @fecha_hora_fin, @fecha_registro_nube, @datos_encriptados,
+                 @descripcion, @updated_at)
+            ON CONFLICT(id) DO UPDATE SET
+                nombre = excluded.nombre,
+                fecha = excluded.fecha,
+                distancia_gps = excluded.distancia_gps,
+                distancia_beacons = excluded.distancia_beacons,
+                latitud_orig = excluded.latitud_orig,
+                longitud_orig = excluded.longitud_orig,
+                email_creador = excluded.email_creador,
+                telefono_creador = excluded.telefono_creador,
+                publico = excluded.publico,
+                agrupacion = excluded.agrupacion,
+                dificultad = excluded.dificultad,
+                duracion_estimada = excluded.duracion_estimada,
+                duracion_segundos = excluded.duracion_segundos,
+                desnivel_positivo = excluded.desnivel_positivo,
+                desnivel_negativo = excluded.desnivel_negativo,
+                contador_subidas = excluded.contador_subidas,
+                contador_bajadas = excluded.contador_bajadas,
+                conectividad = excluded.conectividad,
+                codigo = excluded.codigo,
+                fecha_hora_inicio = excluded.fecha_hora_inicio,
+                fecha_hora_fin = excluded.fecha_hora_fin,
+                fecha_registro_nube = excluded.fecha_registro_nube,
+                datos_encriptados = excluded.datos_encriptados,
+                descripcion = excluded.descripcion,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+        foreach (var item in items)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = cmdText;
+        cmd.CommandText = @"
+            INSERT INTO cache_rutas
+                (id, nombre, fecha, distancia_gps, distancia_beacons, latitud_orig, longitud_orig,
+                 email_creador, telefono_creador, publico, agrupacion, dificultad, duracion_estimada,
+                 duracion_segundos, desnivel_positivo, desnivel_negativo, contador_subidas, contador_bajadas,
+                 conectividad, codigo, fecha_hora_inicio, fecha_hora_fin, fecha_registro_nube, datos_encriptados,
+                 descripcion, updated_at)
+            VALUES
+                (@id, @nombre, @fecha, @distancia_gps, @distancia_beacons, @latitud_orig, @longitud_orig,
+                 @email_creador, @telefono_creador, @publico, @agrupacion, @dificultad, @duracion_estimada,
+                 @duracion_segundos, @desnivel_positivo, @desnivel_negativo, @contador_subidas, @contador_bajadas,
+                 @conectividad, @codigo, @fecha_hora_inicio, @fecha_hora_fin, @fecha_registro_nube, @datos_encriptados,
+                 @descripcion, @updated_at)
+            ON CONFLICT(id) DO UPDATE SET
+                nombre = excluded.nombre,
+                fecha = excluded.fecha,
+                distancia_gps = excluded.distancia_gps,
+                distancia_beacons = excluded.distancia_beacons,
+                latitud_orig = excluded.latitud_orig,
+                longitud_orig = excluded.longitud_orig,
+                email_creador = excluded.email_creador,
+                telefono_creador = excluded.telefono_creador,
+                publico = excluded.publico,
+                agrupacion = excluded.agrupacion,
+                dificultad = excluded.dificultad,
+                duracion_estimada = excluded.duracion_estimada,
+                duracion_segundos = excluded.duracion_segundos,
+                desnivel_positivo = excluded.desnivel_positivo,
+                desnivel_negativo = excluded.desnivel_negativo,
+                contador_subidas = excluded.contador_subidas,
+                contador_bajadas = excluded.contador_bajadas,
+                conectividad = excluded.conectividad,
+                codigo = excluded.codigo,
+                fecha_hora_inicio = excluded.fecha_hora_inicio,
+                fecha_hora_fin = excluded.fecha_hora_fin,
+                fecha_registro_nube = excluded.fecha_registro_nube,
+                datos_encriptados = excluded.datos_encriptados,
+                descripcion = excluded.descripcion,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+
+        cmd.Parameters.AddWithValue("@id", item.Id);
+        cmd.Parameters.AddWithValue("@nombre", item.Nombre ?? string.Empty);
+        cmd.Parameters.AddWithValue("@fecha", (object?)item.Fecha ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@distancia_gps", (object?)item.DistanciaGps ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@distancia_beacons", (object?)item.DistanciaBeacons ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@latitud_orig", (object?)item.LatitudOrig ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@longitud_orig", (object?)item.LongitudOrig ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@email_creador", (object?)item.EmailCreador ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@telefono_creador", (object?)item.TelefonoCreador ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@publico", item.Publico ? 1 : 0);
+        cmd.Parameters.AddWithValue("@agrupacion", (object?)item.Agrupacion ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@dificultad", (object?)item.Dificultad ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@duracion_estimada", (object?)item.DuracionEstimada ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@duracion_segundos", (object?)item.DuracionSegundos ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@desnivel_positivo", (object?)item.DesnivelPositivo ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@desnivel_negativo", (object?)item.DesnivelNegativo ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@contador_subidas", (object?)item.ContadorSubidas ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@contador_bajadas", (object?)item.ContadorBajadas ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@conectividad", (object?)item.Conectividad ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@codigo", (object?)item.Codigo ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@fecha_hora_inicio", (object?)item.FechaHoraInicio ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@fecha_hora_fin", (object?)item.FechaHoraFin ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@fecha_registro_nube", (object?)item.FechaRegistroNube ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@datos_encriptados", (object?)item.DatosEncriptados ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@descripcion", (object?)item.Descripcion ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
+        await SetLastSyncTimeAsync("rutas");
     }
 
     public async Task DeleteRutaAsync(string id)
@@ -603,6 +876,7 @@ public class SqliteCacheService : ISqliteCacheService
             cmd.Parameters.AddWithValue("@datos_encriptados", (object?)item.DatosEncriptados ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@descripcion", (object?)item.Descripcion ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@updated_at", now);
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -619,7 +893,8 @@ public class SqliteCacheService : ISqliteCacheService
 
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT id_agrupacion, nombre, descripcion, ciudad, contacto, clave
+            SELECT id_agrupacion, nombre, descripcion, ciudad, contacto, clave, fupdate, logo,
+                   responsable, telefono, email, fecha_creacion
             FROM cache_agrupaciones
             ORDER BY nombre ASC;
         ";
@@ -627,6 +902,22 @@ public class SqliteCacheService : ISqliteCacheService
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
+            byte[]? logoBytes = null;
+            if (!reader.IsDBNull(7))
+            {
+                var val = reader.GetValue(7);
+                if (val is byte[] b) logoBytes = b;
+                else if (val is string s && !string.IsNullOrWhiteSpace(s))
+                {
+                    try
+                    {
+                        string h = s.StartsWith("\\x", StringComparison.OrdinalIgnoreCase) ? s.Substring(2) : s;
+                        logoBytes = Convert.FromHexString(h);
+                    }
+                    catch { }
+                }
+            }
+
             list.Add(new Agrupacion
             {
                 IdAgrupacion = reader.GetString(0),
@@ -634,7 +925,13 @@ public class SqliteCacheService : ISqliteCacheService
                 Descripcion = reader.IsDBNull(2) ? null : reader.GetString(2),
                 Ciudad = reader.IsDBNull(3) ? null : reader.GetString(3),
                 Contacto = reader.IsDBNull(4) ? null : reader.GetString(4),
-                Clave = reader.IsDBNull(5) ? null : reader.GetString(5)
+                Clave = reader.IsDBNull(5) ? null : reader.GetString(5),
+                Fupdate = reader.IsDBNull(6) ? null : reader.GetString(6),
+                Logo = logoBytes,
+                Responsable = reader.IsDBNull(8) ? null : reader.GetString(8),
+                Telefono = reader.IsDBNull(9) ? null : reader.GetString(9),
+                Email = reader.IsDBNull(10) ? null : reader.GetString(10),
+                FechaCreacion = reader.IsDBNull(11) ? null : reader.GetString(11)
             });
         }
         return list;
@@ -648,27 +945,92 @@ public class SqliteCacheService : ISqliteCacheService
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             INSERT INTO cache_agrupaciones
-                (id_agrupacion, nombre, descripcion, ciudad, contacto, clave, updated_at)
+                (id_agrupacion, nombre, responsable, telefono, email, fecha_creacion, descripcion, ciudad, contacto, clave, logo, updated_at, fupdate)
             VALUES
-                (@id_agrupacion, @nombre, @descripcion, @ciudad, @contacto, @clave, @updated_at)
+                (@id_agrupacion, @nombre, @responsable, @telefono, @email, @fecha_creacion, @descripcion, @ciudad, @contacto, @clave, @logo, @updated_at, @fupdate)
             ON CONFLICT(id_agrupacion) DO UPDATE SET
                 nombre = excluded.nombre,
+                responsable = excluded.responsable,
+                telefono = excluded.telefono,
+                email = excluded.email,
+                fecha_creacion = excluded.fecha_creacion,
                 descripcion = excluded.descripcion,
                 ciudad = excluded.ciudad,
                 contacto = excluded.contacto,
                 clave = excluded.clave,
-                updated_at = excluded.updated_at;
+                logo = excluded.logo,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
         ";
 
         cmd.Parameters.AddWithValue("@id_agrupacion", item.IdAgrupacion);
         cmd.Parameters.AddWithValue("@nombre", item.Nombre ?? string.Empty);
+        cmd.Parameters.AddWithValue("@responsable", (object?)item.Responsable ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@telefono", (object?)item.Telefono ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@email", (object?)item.Email ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@fecha_creacion", (object?)item.FechaCreacion ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@descripcion", (object?)item.Descripcion ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@ciudad", (object?)item.Ciudad ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@contacto", (object?)item.Contacto ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@clave", (object?)item.Clave ?? DBNull.Value);
+        var pLogo = cmd.Parameters.Add("@logo", SqliteType.Blob);
+        pLogo.Value = (object?)item.Logo ?? DBNull.Value;
         cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
 
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task UpsertManyAgrupacionesAsync(IEnumerable<Agrupacion> items)
+    {
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var transaction = conn.BeginTransaction();
+        string cmdText = @"
+            INSERT INTO cache_agrupaciones
+                (id_agrupacion, nombre, responsable, telefono, email, fecha_creacion, descripcion, ciudad, contacto, clave, logo, updated_at, fupdate)
+            VALUES
+                (@id_agrupacion, @nombre, @responsable, @telefono, @email, @fecha_creacion, @descripcion, @ciudad, @contacto, @clave, @logo, @updated_at, @fupdate)
+            ON CONFLICT(id_agrupacion) DO UPDATE SET
+                nombre = excluded.nombre,
+                responsable = excluded.responsable,
+                telefono = excluded.telefono,
+                email = excluded.email,
+                fecha_creacion = excluded.fecha_creacion,
+                descripcion = excluded.descripcion,
+                ciudad = excluded.ciudad,
+                contacto = excluded.contacto,
+                clave = excluded.clave,
+                logo = excluded.logo,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+        foreach (var item in items)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = cmdText;
+
+            cmd.Parameters.AddWithValue("@id_agrupacion", item.IdAgrupacion);
+            cmd.Parameters.AddWithValue("@nombre", item.Nombre ?? string.Empty);
+            cmd.Parameters.AddWithValue("@responsable", (object?)item.Responsable ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@telefono", (object?)item.Telefono ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@email", (object?)item.Email ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@fecha_creacion", (object?)item.FechaCreacion ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@descripcion", (object?)item.Descripcion ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ciudad", (object?)item.Ciudad ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@contacto", (object?)item.Contacto ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@clave", (object?)item.Clave ?? DBNull.Value);
+            var pLogo = cmd.Parameters.Add("@logo", SqliteType.Blob);
+            pLogo.Value = (object?)item.Logo ?? DBNull.Value;
+            cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
+        await SetLastSyncTimeAsync("agrupaciones");
     }
 
     public async Task DeleteAgrupacionAsync(string idAgrupacion)
@@ -697,9 +1059,9 @@ public class SqliteCacheService : ISqliteCacheService
 
         string insertSql = @"
             INSERT INTO cache_agrupaciones
-                (id_agrupacion, nombre, descripcion, ciudad, contacto, clave, updated_at)
+                (id_agrupacion, nombre, responsable, telefono, email, fecha_creacion, descripcion, ciudad, contacto, clave, logo, updated_at, fupdate)
             VALUES
-                (@id_agrupacion, @nombre, @descripcion, @ciudad, @contacto, @clave, @updated_at);
+                (@id_agrupacion, @nombre, @responsable, @telefono, @email, @fecha_creacion, @descripcion, @ciudad, @contacto, @clave, @logo, @updated_at, @fupdate);
         ";
 
         string now = DateTime.UtcNow.ToString("o");
@@ -710,11 +1072,18 @@ public class SqliteCacheService : ISqliteCacheService
             cmd.CommandText = insertSql;
             cmd.Parameters.AddWithValue("@id_agrupacion", item.IdAgrupacion);
             cmd.Parameters.AddWithValue("@nombre", item.Nombre ?? string.Empty);
+            cmd.Parameters.AddWithValue("@responsable", (object?)item.Responsable ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@telefono", (object?)item.Telefono ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@email", (object?)item.Email ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@fecha_creacion", (object?)item.FechaCreacion ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@descripcion", (object?)item.Descripcion ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@ciudad", (object?)item.Ciudad ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@contacto", (object?)item.Contacto ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@clave", (object?)item.Clave ?? DBNull.Value);
+            var pLogo = cmd.Parameters.Add("@logo", SqliteType.Blob);
+            pLogo.Value = (object?)item.Logo ?? DBNull.Value;
             cmd.Parameters.AddWithValue("@updated_at", now);
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -732,7 +1101,7 @@ public class SqliteCacheService : ISqliteCacheService
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
             SELECT id_invitacion, titulo, id_ruta, fecha_salida, punto_encuentro,
-                   id_agrupacion, email_organizador, cupo_maximo, estado, telefono
+                   id_agrupacion, email_organizador, cupo_maximo, estado, telefono, fupdate
             FROM cache_invitaciones
             ORDER BY fecha_salida ASC;
         ";
@@ -751,7 +1120,8 @@ public class SqliteCacheService : ISqliteCacheService
                 EmailOrganizador = reader.IsDBNull(6) ? null : reader.GetString(6),
                 CupoMaximo = reader.IsDBNull(7) ? null : reader.GetInt32(7),
                 Estado = reader.IsDBNull(8) ? "Activa" : reader.GetString(8),
-                Telefono = reader.IsDBNull(9) ? null : reader.GetString(9)
+                Telefono = reader.IsDBNull(9) ? null : reader.GetString(9),
+                Fupdate = reader.IsDBNull(10) ? null : reader.GetString(10)
             });
         }
         return list;
@@ -780,7 +1150,8 @@ public class SqliteCacheService : ISqliteCacheService
                 cupo_maximo = excluded.cupo_maximo,
                 estado = excluded.estado,
                 telefono = excluded.telefono,
-                updated_at = excluded.updated_at;
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
         ";
 
         cmd.Parameters.AddWithValue("@id_invitacion", item.IdInvitacion);
@@ -794,8 +1165,80 @@ public class SqliteCacheService : ISqliteCacheService
         cmd.Parameters.AddWithValue("@estado", (object?)item.Estado ?? "Activa");
         cmd.Parameters.AddWithValue("@telefono", (object?)item.Telefono ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
 
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task UpsertManyInvitacionesAsync(IEnumerable<InvitacionRuta> items)
+    {
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var transaction = conn.BeginTransaction();
+        string cmdText = @"
+            INSERT INTO cache_invitaciones
+                (id_invitacion, titulo, id_ruta, fecha_salida, punto_encuentro,
+                 id_agrupacion, email_organizador, cupo_maximo, estado, telefono, updated_at)
+            VALUES
+                (@id_invitacion, @titulo, @id_ruta, @fecha_salida, @punto_encuentro,
+                 @id_agrupacion, @email_organizador, @cupo_maximo, @estado, @telefono, @updated_at)
+            ON CONFLICT(id_invitacion) DO UPDATE SET
+                titulo = excluded.titulo,
+                id_ruta = excluded.id_ruta,
+                fecha_salida = excluded.fecha_salida,
+                punto_encuentro = excluded.punto_encuentro,
+                id_agrupacion = excluded.id_agrupacion,
+                email_organizador = excluded.email_organizador,
+                cupo_maximo = excluded.cupo_maximo,
+                estado = excluded.estado,
+                telefono = excluded.telefono,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+        foreach (var item in items)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = cmdText;
+        cmd.CommandText = @"
+            INSERT INTO cache_invitaciones
+                (id_invitacion, titulo, id_ruta, fecha_salida, punto_encuentro,
+                 id_agrupacion, email_organizador, cupo_maximo, estado, telefono, updated_at)
+            VALUES
+                (@id_invitacion, @titulo, @id_ruta, @fecha_salida, @punto_encuentro,
+                 @id_agrupacion, @email_organizador, @cupo_maximo, @estado, @telefono, @updated_at)
+            ON CONFLICT(id_invitacion) DO UPDATE SET
+                titulo = excluded.titulo,
+                id_ruta = excluded.id_ruta,
+                fecha_salida = excluded.fecha_salida,
+                punto_encuentro = excluded.punto_encuentro,
+                id_agrupacion = excluded.id_agrupacion,
+                email_organizador = excluded.email_organizador,
+                cupo_maximo = excluded.cupo_maximo,
+                estado = excluded.estado,
+                telefono = excluded.telefono,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+
+        cmd.Parameters.AddWithValue("@id_invitacion", item.IdInvitacion);
+        cmd.Parameters.AddWithValue("@titulo", item.Titulo ?? string.Empty);
+        cmd.Parameters.AddWithValue("@id_ruta", (object?)item.IdRuta ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@fecha_salida", (object?)item.FechaSalida ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@punto_encuentro", (object?)item.PuntoEncuentro ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@id_agrupacion", (object?)item.IdAgrupacion ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@email_organizador", (object?)item.EmailOrganizador ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@cupo_maximo", (object?)item.CupoMaximo ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@estado", (object?)item.Estado ?? "Activa");
+        cmd.Parameters.AddWithValue("@telefono", (object?)item.Telefono ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
+        await SetLastSyncTimeAsync("invitaciones");
     }
 
     public async Task DeleteInvitacionAsync(string idInvitacion)
@@ -848,6 +1291,7 @@ public class SqliteCacheService : ISqliteCacheService
             cmd.Parameters.AddWithValue("@estado", (object?)item.Estado ?? "Activa");
             cmd.Parameters.AddWithValue("@telefono", (object?)item.Telefono ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@updated_at", now);
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -864,7 +1308,7 @@ public class SqliteCacheService : ISqliteCacheService
 
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT id_invitacion, email_senderista, estado, fecha_registro, telefono_senderista
+            SELECT id_invitacion, email_senderista, estado, fecha_registro, telefono_senderista, fupdate
             FROM cache_participantes
             ORDER BY id_invitacion, email_senderista;
         ";
@@ -878,7 +1322,8 @@ public class SqliteCacheService : ISqliteCacheService
                 EmailSenderista = reader.GetString(1),
                 Estado = reader.IsDBNull(2) ? "Inscrito" : reader.GetString(2),
                 FechaRegistro = reader.IsDBNull(3) ? null : reader.GetString(3),
-                TelefonoSenderista = reader.IsDBNull(4) ? null : reader.GetString(4)
+                TelefonoSenderista = reader.IsDBNull(4) ? null : reader.GetString(4),
+                Fupdate = reader.IsDBNull(5) ? null : reader.GetString(5)
             });
         }
         return list;
@@ -899,7 +1344,8 @@ public class SqliteCacheService : ISqliteCacheService
                 estado = excluded.estado,
                 fecha_registro = excluded.fecha_registro,
                 telefono_senderista = excluded.telefono_senderista,
-                updated_at = excluded.updated_at;
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
         ";
 
         cmd.Parameters.AddWithValue("@id_invitacion", item.IdInvitacion);
@@ -908,8 +1354,59 @@ public class SqliteCacheService : ISqliteCacheService
         cmd.Parameters.AddWithValue("@fecha_registro", (object?)item.FechaRegistro ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@telefono_senderista", (object?)item.TelefonoSenderista ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
 
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task UpsertManyParticipantesAsync(IEnumerable<ParticipanteInvitacion> items)
+    {
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var transaction = conn.BeginTransaction();
+        string cmdText = @"
+            INSERT INTO cache_participantes
+                (id_invitacion, email_senderista, estado, fecha_registro, telefono_senderista, updated_at)
+            VALUES
+                (@id_invitacion, @email_senderista, @estado, @fecha_registro, @telefono_senderista, @updated_at)
+            ON CONFLICT(id_invitacion, email_senderista) DO UPDATE SET
+                estado = excluded.estado,
+                fecha_registro = excluded.fecha_registro,
+                telefono_senderista = excluded.telefono_senderista,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+        foreach (var item in items)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = cmdText;
+        cmd.CommandText = @"
+            INSERT INTO cache_participantes
+                (id_invitacion, email_senderista, estado, fecha_registro, telefono_senderista, updated_at)
+            VALUES
+                (@id_invitacion, @email_senderista, @estado, @fecha_registro, @telefono_senderista, @updated_at)
+            ON CONFLICT(id_invitacion, email_senderista) DO UPDATE SET
+                estado = excluded.estado,
+                fecha_registro = excluded.fecha_registro,
+                telefono_senderista = excluded.telefono_senderista,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+
+        cmd.Parameters.AddWithValue("@id_invitacion", item.IdInvitacion);
+        cmd.Parameters.AddWithValue("@email_senderista", item.EmailSenderista);
+        cmd.Parameters.AddWithValue("@estado", (object?)item.Estado ?? "Inscrito");
+        cmd.Parameters.AddWithValue("@fecha_registro", (object?)item.FechaRegistro ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@telefono_senderista", (object?)item.TelefonoSenderista ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
+        await SetLastSyncTimeAsync("participantes");
     }
 
     public async Task DeleteParticipanteAsync(string idInvitacion, string emailSenderista)
@@ -956,6 +1453,7 @@ public class SqliteCacheService : ISqliteCacheService
             cmd.Parameters.AddWithValue("@fecha_registro", (object?)item.FechaRegistro ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@telefono_senderista", (object?)item.TelefonoSenderista ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@updated_at", now);
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -972,7 +1470,7 @@ public class SqliteCacheService : ISqliteCacheService
 
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT id, dificultad, frase, autor, activa
+            SELECT id, dificultad, frase, autor, activa, fupdate
             FROM cache_frases_dificultad
             ORDER BY dificultad, id;
         ";
@@ -986,7 +1484,8 @@ public class SqliteCacheService : ISqliteCacheService
                 Dificultad = reader.GetString(1),
                 Frase = reader.GetString(2),
                 Autor = reader.IsDBNull(3) ? null : reader.GetString(3),
-                Activa = reader.GetInt32(4) != 0
+                Activa = reader.GetInt32(4) != 0,
+                Fupdate = reader.IsDBNull(5) ? null : reader.GetString(5)
             });
         }
         return list;
@@ -1008,7 +1507,8 @@ public class SqliteCacheService : ISqliteCacheService
                 frase = excluded.frase,
                 autor = excluded.autor,
                 activa = excluded.activa,
-                updated_at = excluded.updated_at;
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
         ";
 
         cmd.Parameters.AddWithValue("@id", item.Id);
@@ -1017,8 +1517,61 @@ public class SqliteCacheService : ISqliteCacheService
         cmd.Parameters.AddWithValue("@autor", (object?)item.Autor ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@activa", item.Activa ? 1 : 0);
         cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
 
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task UpsertManyfrases_dificultadAsync(IEnumerable<FraseDificultad> items)
+    {
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var transaction = conn.BeginTransaction();
+        string cmdText = @"
+            INSERT INTO cache_frases_dificultad
+                (id, dificultad, frase, autor, activa, updated_at)
+            VALUES
+                (@id, @dificultad, @frase, @autor, @activa, @updated_at)
+            ON CONFLICT(id) DO UPDATE SET
+                dificultad = excluded.dificultad,
+                frase = excluded.frase,
+                autor = excluded.autor,
+                activa = excluded.activa,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+        foreach (var item in items)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = cmdText;
+        cmd.CommandText = @"
+            INSERT INTO cache_frases_dificultad
+                (id, dificultad, frase, autor, activa, updated_at)
+            VALUES
+                (@id, @dificultad, @frase, @autor, @activa, @updated_at)
+            ON CONFLICT(id) DO UPDATE SET
+                dificultad = excluded.dificultad,
+                frase = excluded.frase,
+                autor = excluded.autor,
+                activa = excluded.activa,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+
+        cmd.Parameters.AddWithValue("@id", item.Id);
+        cmd.Parameters.AddWithValue("@dificultad", item.Dificultad ?? "Moderada");
+        cmd.Parameters.AddWithValue("@frase", item.Frase ?? string.Empty);
+        cmd.Parameters.AddWithValue("@autor", (object?)item.Autor ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@activa", item.Activa ? 1 : 0);
+        cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
+        await SetLastSyncTimeAsync("frases_dificultad");
     }
 
     public async Task DeleteFraseDificultadAsync(string id)
@@ -1064,6 +1617,7 @@ public class SqliteCacheService : ISqliteCacheService
             cmd.Parameters.AddWithValue("@autor", (object?)item.Autor ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@activa", item.Activa ? 1 : 0);
             cmd.Parameters.AddWithValue("@updated_at", now);
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
 
@@ -1080,7 +1634,7 @@ public class SqliteCacheService : ISqliteCacheService
 
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            SELECT id, categoria, requisito, descripcion, es_obligatorio, activo
+            SELECT id, categoria, requisito, descripcion, es_obligatorio, activo, fupdate
             FROM cache_requisitos_senderismo
             ORDER BY categoria, id;
         ";
@@ -1095,7 +1649,8 @@ public class SqliteCacheService : ISqliteCacheService
                 Requisito = reader.GetString(2),
                 Descripcion = reader.IsDBNull(3) ? null : reader.GetString(3),
                 EsObligatorio = reader.GetInt32(4) != 0,
-                Activo = reader.GetInt32(5) != 0
+                Activo = reader.GetInt32(5) != 0,
+                Fupdate = reader.IsDBNull(6) ? null : reader.GetString(6)
             });
         }
         return list;
@@ -1118,7 +1673,8 @@ public class SqliteCacheService : ISqliteCacheService
                 descripcion = excluded.descripcion,
                 es_obligatorio = excluded.es_obligatorio,
                 activo = excluded.activo,
-                updated_at = excluded.updated_at;
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
         ";
 
         cmd.Parameters.AddWithValue("@id", item.Id);
@@ -1128,8 +1684,64 @@ public class SqliteCacheService : ISqliteCacheService
         cmd.Parameters.AddWithValue("@es_obligatorio", item.EsObligatorio ? 1 : 0);
         cmd.Parameters.AddWithValue("@activo", item.Activo ? 1 : 0);
         cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
 
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task UpsertManyrequisitos_senderismoAsync(IEnumerable<RequisitoSenderismo> items)
+    {
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var transaction = conn.BeginTransaction();
+        string cmdText = @"
+            INSERT INTO cache_requisitos_senderismo
+                (id, categoria, requisito, descripcion, es_obligatorio, activo, updated_at)
+            VALUES
+                (@id, @categoria, @requisito, @descripcion, @es_obligatorio, @activo, @updated_at)
+            ON CONFLICT(id) DO UPDATE SET
+                categoria = excluded.categoria,
+                requisito = excluded.requisito,
+                descripcion = excluded.descripcion,
+                es_obligatorio = excluded.es_obligatorio,
+                activo = excluded.activo,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+        foreach (var item in items)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = cmdText;
+        cmd.CommandText = @"
+            INSERT INTO cache_requisitos_senderismo
+                (id, categoria, requisito, descripcion, es_obligatorio, activo, updated_at)
+            VALUES
+                (@id, @categoria, @requisito, @descripcion, @es_obligatorio, @activo, @updated_at)
+            ON CONFLICT(id) DO UPDATE SET
+                categoria = excluded.categoria,
+                requisito = excluded.requisito,
+                descripcion = excluded.descripcion,
+                es_obligatorio = excluded.es_obligatorio,
+                activo = excluded.activo,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+
+        cmd.Parameters.AddWithValue("@id", item.Id);
+        cmd.Parameters.AddWithValue("@categoria", item.Categoria ?? "General");
+        cmd.Parameters.AddWithValue("@requisito", item.Requisito ?? string.Empty);
+        cmd.Parameters.AddWithValue("@descripcion", (object?)item.Descripcion ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@es_obligatorio", item.EsObligatorio ? 1 : 0);
+        cmd.Parameters.AddWithValue("@activo", item.Activo ? 1 : 0);
+        cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+        cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
+
+        await cmd.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
+        await SetLastSyncTimeAsync("requisitos_senderismo");
     }
 
     public async Task DeleteRequisitoSenderismoAsync(string id)
@@ -1176,10 +1788,95 @@ public class SqliteCacheService : ISqliteCacheService
             cmd.Parameters.AddWithValue("@es_obligatorio", item.EsObligatorio ? 1 : 0);
             cmd.Parameters.AddWithValue("@activo", item.Activo ? 1 : 0);
             cmd.Parameters.AddWithValue("@updated_at", now);
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
 
         await transaction.CommitAsync();
         await SetLastSyncTimeAsync("requisitos_senderismo");
     }
+
+public async Task UpsertManyFrasesDificultadAsync(IEnumerable<FraseDificultad> items)
+    {
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var transaction = conn.BeginTransaction();
+        string cmdText = @"
+            INSERT INTO cache_frases_dificultad
+                (id, dificultad, frase, autor, activa, updated_at)
+            VALUES
+                (@id, @dificultad, @frase, @autor, @activa, @updated_at)
+            ON CONFLICT(id) DO UPDATE SET
+                dificultad = excluded.dificultad,
+                frase = excluded.frase,
+                autor = excluded.autor,
+                activa = excluded.activa,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+        foreach (var item in items)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = cmdText;
+            cmd.Parameters.AddWithValue("@id", item.Id);
+            cmd.Parameters.AddWithValue("@dificultad", item.Dificultad ?? "Moderada");
+            cmd.Parameters.AddWithValue("@frase", item.Frase ?? string.Empty);
+            cmd.Parameters.AddWithValue("@autor", (object?)item.Autor ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@activa", item.Activa ? 1 : 0);
+            cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
+        await SetLastSyncTimeAsync("frases_dificultad");
+    }
+
+public async Task UpsertManyRequisitosSenderismoAsync(IEnumerable<RequisitoSenderismo> items)
+    {
+        using var conn = CreateConnection();
+        await conn.OpenAsync();
+
+        using var transaction = conn.BeginTransaction();
+        string cmdText = @"
+            INSERT INTO cache_requisitos_senderismo
+                (id, categoria, requisito, descripcion, es_obligatorio, activo, updated_at)
+            VALUES
+                (@id, @categoria, @requisito, @descripcion, @es_obligatorio, @activo, @updated_at)
+            ON CONFLICT(id) DO UPDATE SET
+                categoria = excluded.categoria,
+                requisito = excluded.requisito,
+                descripcion = excluded.descripcion,
+                es_obligatorio = excluded.es_obligatorio,
+                activo = excluded.activo,
+                updated_at = excluded.updated_at,
+                fupdate = excluded.fupdate;
+        ";
+        foreach (var item in items)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = cmdText;
+            cmd.Parameters.AddWithValue("@id", item.Id);
+            cmd.Parameters.AddWithValue("@categoria", item.Categoria ?? "General");
+            cmd.Parameters.AddWithValue("@requisito", item.Requisito ?? string.Empty);
+            cmd.Parameters.AddWithValue("@descripcion", (object?)item.Descripcion ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@es_obligatorio", item.EsObligatorio ? 1 : 0);
+            cmd.Parameters.AddWithValue("@activo", item.Activo ? 1 : 0);
+            cmd.Parameters.AddWithValue("@updated_at", DateTime.UtcNow.ToString("o"));
+            cmd.Parameters.AddWithValue("@fupdate", (object?)item.Fupdate ?? DBNull.Value);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        await transaction.CommitAsync();
+        await SetLastSyncTimeAsync("requisitos_senderismo");
+    }
+
 }
+
+
+
+
+
+
+

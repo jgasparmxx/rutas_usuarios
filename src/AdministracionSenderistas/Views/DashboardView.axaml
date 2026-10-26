@@ -78,31 +78,17 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Connection indicator -->
-                    <Border Background="#1E293B"
-                            BorderBrush="#334155"
-                            BorderThickness="1"
-                            CornerRadius="20"
-                            Padding="12,5">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Ellipse Width="8" Height="8" Fill="#10B981" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding ConnectionState}"
-                                       FontSize="11"
-                                       Foreground="#94A3B8"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
                 </StackPanel>
 
                 <!-- Actions (Sync All & Logout) -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <Button Classes="secondary"
                             Command="{Binding SyncAllTablesCommand}"
-                            ToolTip.Tip="Sincronizar todas las tablas con API y actualizar caché SQLite">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="⟳" FontWeight="Bold" FontSize="14" />
-                            <TextBlock Text="Sincronizar Todo" FontSize="12" />
-                        </StackPanel>
+                            ToolTip.Tip="Forzar Sincronización Manual (Usar si falla el internet)"
+                            Padding="10,6"
+                            Width="50" Height="40"
+                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                        <TextBlock Text="⟳" FontWeight="Bold" FontSize="22" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Button>
 
                     <Button Classes="danger"
@@ -492,12 +478,17 @@
                                           SelectionMode="Single"
                                           IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Agrupaciones}}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="ID Agrupación" Binding="{Binding IdAgrupacion}" Width="140" />
-                                        <DataGridTextColumn Header="Nombre" Binding="{Binding Nombre}" Width="220" />
-                                        <DataGridTextColumn Header="Ciudad" Binding="{Binding Ciudad}" Width="140" />
-                                        <DataGridTextColumn Header="Contacto" Binding="{Binding Contacto}" Width="160" />
-                                        <DataGridTextColumn Header="Clave (Admin Rol 'A')" Binding="{Binding Clave}" Width="220" />
-                                        <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="280" />
+                                        <DataGridTextColumn Header="ID Agrupación" Binding="{Binding IdAgrupacion}" Width="130" />
+                                        <DataGridTextColumn Header="Nombre" Binding="{Binding Nombre}" Width="200" />
+                                        <DataGridTextColumn Header="Logo" Binding="{Binding TieneLogoTexto}" Width="80" />
+                                        <DataGridTextColumn Header="Responsable" Binding="{Binding Responsable}" Width="160" />
+                                        <DataGridTextColumn Header="Teléfono" Binding="{Binding Telefono}" Width="130" />
+                                        <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="180" />
+                                        <DataGridTextColumn Header="Fecha Creación" Binding="{Binding FechaCreacion}" Width="140" />
+                                        <DataGridTextColumn Header="Ciudad" Binding="{Binding Ciudad}" Width="130" />
+                                        <DataGridTextColumn Header="Contacto" Binding="{Binding Contacto}" Width="150" />
+                                        <DataGridTextColumn Header="Clave (Admin Rol 'A')" Binding="{Binding Clave}" Width="200" />
+                                        <DataGridTextColumn Header="Descripción" Binding="{Binding Descripcion}" Width="240" />
                                     </DataGrid.Columns>
                                 </DataGrid>
 
@@ -1397,7 +1388,57 @@
                                 <!-- FORMULARIO: AGRUPACION -->
                                 <StackPanel Spacing="12"
                                             IsVisible="{Binding CurrentTable, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static vm:ActiveTable.Agrupaciones}}">
-                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0">
+
+                                    <!-- LOGO DE LA AGRUPACION (AL PRINCIPIO) -->
+                                    <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,4">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <!-- Preview del Logo -->
+                                            <Border Grid.Column="0" Width="84" Height="84" Background="#1E293B" BorderBrush="#475569" BorderThickness="1" CornerRadius="6" ClipToBounds="True">
+                                                <Panel>
+                                                    <Image Source="{Binding FormAgrupacionLogoBitmap}"
+                                                           Stretch="Uniform"
+                                                           IsVisible="{Binding HasAgrupacionLogo}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" />
+                                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="4"
+                                                                IsVisible="{Binding !HasAgrupacionLogo}">
+                                                        <TextBlock Text="📷" FontSize="22" HorizontalAlignment="Center" Opacity="0.6" />
+                                                        <TextBlock Text="Sin logo" FontSize="11" Foreground="#64748B" HorizontalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Panel>
+                                            </Border>
+
+                                            <!-- Controles del Logo -->
+                                            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="6">
+                                                <TextBlock Text="Logo de la Agrupación (Imagen)" FontWeight="SemiBold" FontSize="12" Foreground="#38BDF8" />
+                                                <TextBlock Text="{Binding FormAgrupacion.LogoSizeText, StringFormat='Estado: {0}'}" FontSize="11" Foreground="#94A3B8" />
+
+                                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                                                    <Button Content="📁 Seleccionar Imagen..."
+                                                            Command="{Binding SelectAgrupacionLogoCommand}"
+                                                            Background="#0284C7"
+                                                            Foreground="White"
+                                                            FontWeight="SemiBold"
+                                                            FontSize="11"
+                                                            Padding="10,6"
+                                                            CornerRadius="5" />
+
+                                                    <Button Content="🗑️ Quitar Logo"
+                                                            Command="{Binding RemoveAgrupacionLogoCommand}"
+                                                            IsVisible="{Binding HasAgrupacionLogo}"
+                                                            Background="#DC2626"
+                                                            Foreground="White"
+                                                            FontSize="11"
+                                                            Padding="10,6"
+                                                            CornerRadius="5" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- DATOS GENERALES Y DE CONTACTO -->
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0">
+                                        <!-- Fila 0: ID y Nombre -->
                                         <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
                                             <TextBlock Text="ID Agrupación" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
                                             <TextBox Text="{Binding FormAgrupacion.IdAgrupacion, Mode=TwoWay}" IsEnabled="{Binding IsNewRecord}" />
@@ -1407,16 +1448,54 @@
                                             <TextBox Text="{Binding FormAgrupacion.Nombre, Mode=TwoWay}" />
                                         </StackPanel>
 
+                                        <!-- Fila 1: Responsable y Email -->
                                         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
-                                            <TextBlock Text="Ciudad" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                            <TextBox Text="{Binding FormAgrupacion.Ciudad, Mode=TwoWay}" />
+                                            <TextBlock Text="Responsable / Representante" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.Responsable, Mode=TwoWay}" Watermark="Nombre del responsable del club o grupo" />
                                         </StackPanel>
                                         <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
-                                            <TextBlock Text="Contacto" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                            <TextBox Text="{Binding FormAgrupacion.Contacto, Mode=TwoWay}" />
+                                            <TextBlock Text="Correo Electrónico (Email)" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.Email, Mode=TwoWay}" Watermark="ej: contacto@agrupacion.org" />
+                                        </StackPanel>
+
+                                        <!-- Fila 2: Teléfono y Fecha de Creación -->
+                                        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Teléfono de Contacto" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.Telefono, Mode=TwoWay}" Watermark="ej: 3121234567" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Fecha de Creación" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.FechaCreacion, Mode=TwoWay}" Watermark="ej: 2026-05-12" />
+                                        </StackPanel>
+
+                                        <!-- Fila 3: Ciudad y Contacto Alternativo -->
+                                        <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,8,10" Spacing="4">
+                                            <TextBlock Text="Ciudad" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.Ciudad, Mode=TwoWay}" Watermark="Ciudad o localidad" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="1" Margin="8,0,0,10" Spacing="4">
+                                            <TextBlock Text="Contacto Alternativo" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                            <TextBox Text="{Binding FormAgrupacion.Contacto, Mode=TwoWay}" Watermark="Contacto o medio adicional" />
                                         </StackPanel>
                                     </Grid>
-                                    <StackPanel Spacing="6" Margin="0,0,0,12">
+
+                                    <!-- DESCRIPCION -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Descripción" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
+                                        <TextBox Text="{Binding FormAgrupacion.Descripcion, Mode=TwoWay}" AcceptsReturn="True" Height="70" />
+                                    </StackPanel>
+
+                                    <!-- METADATOS DE SINCRONIZACIÓN (FUPDATE) -->
+                                    <Border Background="#151E2E" BorderBrush="#253248" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,2,0,0">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="⏱️ Última sincronización en servidor (fupdate):" FontSize="11" Foreground="#94A3B8" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding FormAgrupacion.Fupdate, TargetNullValue='No sincronizado aún'}"
+                                                       FontSize="11" FontWeight="Medium" Foreground="#38BDF8" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- CLAVE / ADMINISTRADORES (ROL 'A') AL FINAL -->
+                                    <StackPanel Spacing="6" Margin="0,4,0,4">
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBlock Grid.Column="0" Text="Clave / Administradores de la Agrupación (Rol 'A')" FontWeight="SemiBold" FontSize="12" Foreground="#38BDF8" />
                                             <TextBlock Grid.Column="1" Text="Correos autorizados (separados por coma)" FontSize="11" Foreground="#94A3B8" />
@@ -1434,10 +1513,6 @@
                                                  FontSize="12"
                                                  Padding="10,8"
                                                  Watermark="ejemplo: admin1@correo.com, admin2@correo.com" />
-                                    </StackPanel>
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Descripción" FontWeight="Medium" FontSize="12" Foreground="#CBD5E1" />
-                                        <TextBox Text="{Binding FormAgrupacion.Descripcion, Mode=TwoWay}" AcceptsReturn="True" Height="70" />
                                     </StackPanel>
                                 </StackPanel>
 

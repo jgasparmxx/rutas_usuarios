@@ -74,6 +74,9 @@ class Program
             Console.WriteLine($"[FAIL] Auth test failed: res1={res1.Success}, res2={res2.Success}, res3={res3.Success}");
         }
 
+        Console.WriteLine("\nTesting Agrupacion cache and persistence of all fields...");
+        TestAgrupacionPersistenceAsync().GetAwaiter().GetResult();
+
         Console.WriteLine("\n--- REPAIRING AND VERIFYING COMALA ROUTE ---");
         RepairAndVerifyComalaAsync().GetAwaiter().GetResult();
     }
@@ -150,6 +153,58 @@ class Program
         catch (Exception ex)
         {
             Console.WriteLine($"[FAIL] Error repairing Comala: {ex}");
+        }
+    }
+
+    static async Task TestAgrupacionPersistenceAsync()
+    {
+        try
+        {
+            string testDb = Path.Combine(AppContext.BaseDirectory, "test_agrupacion.db");
+            if (File.Exists(testDb)) File.Delete(testDb);
+            var cache = new SqliteCacheService(testDb);
+            await cache.InitializeAsync();
+
+            var ag = new Agrupacion
+            {
+                IdAgrupacion = "AGRUP_TEST",
+                Nombre = "Club Senderista Volcanes",
+                Responsable = "Juan Perez",
+                Telefono = "3129876543",
+                Email = "contacto@volcanes.org",
+                FechaCreacion = "2026-01-15",
+                Descripcion = "Club oficial de senderismo",
+                Ciudad = "Colima",
+                Contacto = "Lic. Maria Lopez",
+                Clave = "admin1@test.com, admin2@test.com",
+                Fupdate = "2026-10-23T10:00:00Z"
+            };
+
+            await cache.UpsertAgrupacionAsync(ag);
+            var list = await cache.GetAgrupacionesAsync();
+            var retrieved = list.FirstOrDefault(a => a.IdAgrupacion == "AGRUP_TEST");
+
+            if (retrieved != null &&
+                retrieved.Nombre == ag.Nombre &&
+                retrieved.Responsable == ag.Responsable &&
+                retrieved.Telefono == ag.Telefono &&
+                retrieved.Email == ag.Email &&
+                retrieved.FechaCreacion == ag.FechaCreacion &&
+                retrieved.Descripcion == ag.Descripcion &&
+                retrieved.Ciudad == ag.Ciudad &&
+                retrieved.Contacto == ag.Contacto &&
+                retrieved.Clave == ag.Clave)
+            {
+                Console.WriteLine("[PASS] All Agrupacion fields correctly stored and retrieved from SQLite!");
+            }
+            else
+            {
+                Console.WriteLine("[FAIL] Agrupacion fields mismatch in SQLite cache!");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FAIL] TestAgrupacionPersistenceAsync exception: {ex}");
         }
     }
 }

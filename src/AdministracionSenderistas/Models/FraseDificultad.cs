@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace AdministracionSenderistas.Models;
@@ -45,12 +45,21 @@ public partial class FraseDificultad : ObservableObject
         set => SetProperty(ref _activa, value);
     }
 
+        private string? _fupdate;
+    [JsonPropertyName("fupdate")]
+    public string? Fupdate
+    {
+        get => _fupdate;
+        set => SetProperty(ref _fupdate, value);
+    }
     public FraseDificultad Clone() => new()
     {
         Id = Id,
         Dificultad = Dificultad,
         Frase = Frase,
         Autor = Autor,
-        Activa = Activa
+        Activa = Activa,
+        Fupdate = Fupdate
     };
 }
+

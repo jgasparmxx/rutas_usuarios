@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace AdministracionSenderistas.Models;
@@ -98,6 +98,13 @@ public partial class InvitacionRuta : ObservableObject
         set => SetProperty(ref _estado, value);
     }
 
+        private string? _fupdate;
+    [JsonPropertyName("fupdate")]
+    public string? Fupdate
+    {
+        get => _fupdate;
+        set => SetProperty(ref _fupdate, value);
+    }
     public InvitacionRuta Clone() => new()
     {
         IdInvitacion = IdInvitacion,
@@ -109,6 +116,8 @@ public partial class InvitacionRuta : ObservableObject
         IdAgrupacion = IdAgrupacion,
         EmailOrganizador = EmailOrganizador,
         CupoMaximo = CupoMaximo,
-        Estado = Estado
+        Estado = Estado,
+        Fupdate = Fupdate
     };
 }
+

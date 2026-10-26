@@ -7,6 +7,10 @@ using System.Text;
 using System.Threading.Tasks;
 using AdministracionSenderistas.Models;
 using AdministracionSenderistas.Services;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -553,6 +557,38 @@ public partial class DashboardViewModel : ViewModelBase
 
     [ObservableProperty]
     private Agrupacion _formAgrupacion = new();
+
+    partial void OnFormAgrupacionChanged(Agrupacion value)
+    {
+        UpdateAgrupacionLogoBitmap();
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAgrupacionLogo))]
+    private Bitmap? _formAgrupacionLogoBitmap;
+
+    public bool HasAgrupacionLogo => FormAgrupacionLogoBitmap != null;
+
+    public void UpdateAgrupacionLogoBitmap()
+    {
+        if (FormAgrupacion?.Logo != null && FormAgrupacion.Logo.Length > 0)
+        {
+            try
+            {
+                using var ms = new MemoryStream(FormAgrupacion.Logo);
+                FormAgrupacionLogoBitmap = new Bitmap(ms);
+            }
+            catch
+            {
+                FormAgrupacionLogoBitmap = null;
+            }
+        }
+        else
+        {
+            FormAgrupacionLogoBitmap = null;
+        }
+        OnPropertyChanged(nameof(HasAgrupacionLogo));
+    }
 
     [ObservableProperty]
     private InvitacionRuta _formInvitacion = new();
@@ -1158,7 +1194,12 @@ public partial class DashboardViewModel : ViewModelBase
         if (value != null)
         {
             FormAgrupacion = value.Clone();
+            UpdateAgrupacionLogoBitmap();
             IsNewRecord = false;
+        }
+        else
+        {
+            UpdateAgrupacionLogoBitmap();
         }
         UpdateNavigationState();
     }
@@ -1587,7 +1628,11 @@ public partial class DashboardViewModel : ViewModelBase
                     queryA = queryA.Where(a =>
                         (a.Nombre?.ToLowerInvariant().Contains(q) ?? false) ||
                         (a.IdAgrupacion?.ToLowerInvariant().Contains(q) ?? false) ||
-                        (a.Ciudad?.ToLowerInvariant().Contains(q) ?? false));
+                        (a.Responsable?.ToLowerInvariant().Contains(q) ?? false) ||
+                        (a.Email?.ToLowerInvariant().Contains(q) ?? false) ||
+                        (a.Telefono?.ToLowerInvariant().Contains(q) ?? false) ||
+                        (a.Ciudad?.ToLowerInvariant().Contains(q) ?? false) ||
+                        (a.Contacto?.ToLowerInvariant().Contains(q) ?? false));
                 }
                 FilteredAgrupaciones.Clear();
                 foreach (var item in queryA) FilteredAgrupaciones.Add(item);
@@ -1669,6 +1714,68 @@ public partial class DashboardViewModel : ViewModelBase
         IsNewRecord = false;
         UpdateNavigationState();
         SelectedTabIndex = 1; // Ir a pestaña Formulario
+    }
+
+    [RelayCommand]
+    public async Task SelectAgrupacionLogoAsync()
+    {
+        try
+        {
+            IStorageProvider? storage = null;
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                storage = desktop.MainWindow?.StorageProvider;
+            }
+
+            if (storage == null)
+            {
+                StatusBanner = "No se pudo acceder al explorador de archivos del sistema.";
+                IsBannerVisible = true;
+                return;
+            }
+
+            var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Seleccionar Logo de la Agrupación",
+                AllowMultiple = false,
+                FileTypeFilter = new List<FilePickerFileType>
+                {
+                    FilePickerFileTypes.ImageAll,
+                    new("Archivos de imagen")
+                    {
+                        Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.ico" }
+                    }
+                }
+            });
+
+            if (files != null && files.Count > 0)
+            {
+                var file = files[0];
+                await using var stream = await file.OpenReadAsync();
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                byte[] bytes = ms.ToArray();
+
+                FormAgrupacion.Logo = bytes;
+                UpdateAgrupacionLogoBitmap();
+                StatusBanner = $"Logo seleccionado ({bytes.Length / 1024.0:F1} KB): {file.Name}. Pulsa 'Guardar Cambios' para sincronizar.";
+                IsBannerVisible = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusBanner = $"Error al seleccionar logo: {ex.Message}";
+            IsBannerVisible = true;
+        }
+    }
+
+    [RelayCommand]
+    public void RemoveAgrupacionLogo()
+    {
+        FormAgrupacion.Logo = null;
+        UpdateAgrupacionLogoBitmap();
+        StatusBanner = "Logo quitado. Pulsa 'Guardar Cambios' para aplicar en Neon y SQLite.";
+        IsBannerVisible = true;
     }
 
     [RelayCommand]
@@ -2445,7 +2552,7 @@ public partial class DashboardViewModel : ViewModelBase
     public void Logout()
     {
         _authService.Logout();
-        _onLogout?.Invoke();
+        Environment.Exit(0);
     }
 }
 

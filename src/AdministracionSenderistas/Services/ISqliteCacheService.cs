@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AdministracionSenderistas.Models;
@@ -12,42 +12,49 @@ public interface ISqliteCacheService
 
     // Senderistas
     Task<List<Senderista>> GetSenderistasAsync();
+    Task UpsertManySenderistasAsync(IEnumerable<Senderista> items);
     Task UpsertSenderistaAsync(Senderista item);
     Task DeleteSenderistaAsync(string email);
     Task ReplaceSenderistasAsync(IEnumerable<Senderista> items);
 
     // Rutas
     Task<List<Ruta>> GetRutasAsync();
+    Task UpsertManyRutasAsync(IEnumerable<Ruta> items);
     Task UpsertRutaAsync(Ruta item);
     Task DeleteRutaAsync(string id);
     Task ReplaceRutasAsync(IEnumerable<Ruta> items);
 
     // Agrupaciones
     Task<List<Agrupacion>> GetAgrupacionesAsync();
+    Task UpsertManyAgrupacionesAsync(IEnumerable<Agrupacion> items);
     Task UpsertAgrupacionAsync(Agrupacion item);
     Task DeleteAgrupacionAsync(string idAgrupacion);
     Task ReplaceAgrupacionesAsync(IEnumerable<Agrupacion> items);
 
     // Invitaciones
     Task<List<InvitacionRuta>> GetInvitacionesAsync();
+    Task UpsertManyInvitacionesAsync(IEnumerable<InvitacionRuta> items);
     Task UpsertInvitacionAsync(InvitacionRuta item);
     Task DeleteInvitacionAsync(string idInvitacion);
     Task ReplaceInvitacionesAsync(IEnumerable<InvitacionRuta> items);
 
     // Participantes
     Task<List<ParticipanteInvitacion>> GetParticipantesAsync();
+    Task UpsertManyParticipantesAsync(IEnumerable<ParticipanteInvitacion> items);
     Task UpsertParticipanteAsync(ParticipanteInvitacion item);
     Task DeleteParticipanteAsync(string idInvitacion, string emailSenderista);
     Task ReplaceParticipantesAsync(IEnumerable<ParticipanteInvitacion> items);
 
     // Frases Dificultad
     Task<List<FraseDificultad>> GetFrasesDificultadAsync();
+    Task UpsertManyFrasesDificultadAsync(IEnumerable<FraseDificultad> items);
     Task UpsertFraseDificultadAsync(FraseDificultad item);
     Task DeleteFraseDificultadAsync(string id);
     Task ReplaceFrasesDificultadAsync(IEnumerable<FraseDificultad> items);
 
     // Requisitos Senderismo
     Task<List<RequisitoSenderismo>> GetRequisitosSenderismoAsync();
+    Task UpsertManyRequisitosSenderismoAsync(IEnumerable<RequisitoSenderismo> items);
     Task UpsertRequisitoSenderismoAsync(RequisitoSenderismo item);
     Task DeleteRequisitoSenderismoAsync(string id);
     Task ReplaceRequisitosSenderismoAsync(IEnumerable<RequisitoSenderismo> items);
@@ -56,3 +63,4 @@ public interface ISqliteCacheService
     Task SetLastSyncTimeAsync(string tableName);
     Task<DateTime?> GetLastSyncTimeAsync(string tableName);
 }
+

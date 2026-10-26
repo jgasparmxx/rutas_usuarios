@@ -23,9 +23,11 @@ public class PostgrestApiClient : IPostgrestApiClient
         {
             PropertyNameCaseInsensitive = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
+            WriteIndented = false,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         };
         opts.Converters.Add(new FlexibleStringConverter());
+        opts.Converters.Add(new PostgresByteaJsonConverter());
         return opts;
     }
 
@@ -198,3 +200,4 @@ public class PostgrestApiClient : IPostgrestApiClient
         }
     }
 }
+

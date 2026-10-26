@@ -36,16 +36,30 @@ public class DataRepository : IDataRepository
     {
         try
         {
+            var lastSync = await _cacheService.GetLastSyncTimeAsync("senderistas");
+            string endpoint = "/senderistas?order=nombre.asc";
+            if (lastSync.HasValue && !forceRefresh)
+            {
+                endpoint = $"/senderistas?fupdate=gt.{lastSync.Value.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")}&order=nombre.asc";
+            }
+
             var apiData = await _apiClient.GetAsync<List<Senderista>>(
-                "/senderistas?order=nombre.asc",
+                endpoint,
                 CurrentToken);
 
             if (apiData != null && apiData.Count >= 0)
             {
                 IsOnline = true;
-                await _cacheService.ReplaceSenderistasAsync(apiData);
-                NotifyStatus($"Senderistas actualizados desde API ({apiData.Count} registros sincronizados con caché)");
-                return apiData;
+                if (lastSync.HasValue && !forceRefresh && apiData.Count > 0)
+                {
+                    await _cacheService.UpsertManySenderistasAsync(apiData);
+                    NotifyStatus($"Senderistas actualizados (incremental: {apiData.Count} registros sincronizados)");
+                }
+                else if (apiData.Count > 0 || !lastSync.HasValue || forceRefresh)
+                {
+                    await _cacheService.ReplaceSenderistasAsync(apiData);
+                    NotifyStatus($"Senderistas actualizados desde API ({apiData.Count} registros completos)");
+                }
             }
         }
         catch (Exception ex)
@@ -54,72 +68,63 @@ public class DataRepository : IDataRepository
             NotifyStatus($"Modo sin conexión API: {ex.Message}. Mostrando datos locales de SQLite.");
         }
 
-        var localData = await _cacheService.GetSenderistasAsync();
-        return localData;
+        return await _cacheService.GetSenderistasAsync();
     }
 
     public async Task<bool> SaveSenderistaAsync(Senderista senderista)
     {
-        // 1. Guardar en API si hay conexión
-        bool apiSuccess = false;
-        try
-        {
-            // Intentar primero PATCH con los campos modificables (rol, bloqueado, minimo_longitud)
-            var patchPayload = new
-            {
-                rol = senderista.Rol,
-                bloqueado = senderista.Bloqueado,
-                minimo_longitud = senderista.MinimoLongitud ?? 0
-            };
-            string patchEndpoint = $"/senderistas?email=eq.{Uri.EscapeDataString(senderista.Email)}";
-            apiSuccess = await _apiClient.PatchAsync(patchEndpoint, patchPayload, CurrentToken);
-
-            if (!apiSuccess)
-            {
-                // Si PATCH no coincidió (registro nuevo), enviar POST completo
-                await _apiClient.PostAsync<List<Senderista>>("/senderistas", senderista, CurrentToken, upsert: true);
-                apiSuccess = true;
-            }
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
-        // 2. Siempre persistir en SQLite local como caché inmediata
+        // 1. Siempre persistir en SQLite local como caché inmediata
         await _cacheService.UpsertSenderistaAsync(senderista);
+        NotifyStatus($"Guardado en caché SQLite local.");
 
-        if (apiSuccess)
+        // 2. Disparar a la API de forma asincrónica (en un hilo de fondo)
+        _ = Task.Run(async () =>
         {
-            NotifyStatus($"Senderista '{senderista.Email}' guardado con éxito en API y caché local.");
-        }
-        else
-        {
-            NotifyStatus($"Guardado en caché SQLite local (sin conexión con API).");
-        }
+            try
+            {
+                senderista.Fupdate = null; // No mandar Fupdate, Postgres lo asigna con el trigger
+                var patchPayload = new
+                {
+                    rol = senderista.Rol,
+                    bloqueado = senderista.Bloqueado,
+                    minimo_longitud = senderista.MinimoLongitud ?? 0
+                };
+                string patchEndpoint = $"/senderistas?email=eq.{Uri.EscapeDataString(senderista.Email)}";
+                bool apiSuccess = await _apiClient.PatchAsync(patchEndpoint, patchPayload, CurrentToken);
+
+                if (!apiSuccess)
+                {
+                    await _apiClient.PostAsync<List<Senderista>>("/senderistas", senderista, CurrentToken, upsert: true);
+                }
+                IsOnline = true;
+                NotifyStatus($"Senderista '{senderista.Email}' sincronizado en background con API.");
+            }
+            catch (Exception ex)
+            {
+                IsOnline = false;
+                NotifyStatus($"Error de sincronización background para Senderista '{senderista.Email}': {ex.Message}");
+            }
+        });
 
         return true;
     }
 
     public async Task<bool> DeleteSenderistaAsync(string email)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.DeleteAsync($"/senderistas?email=eq.{Uri.EscapeDataString(email)}", CurrentToken);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.DeleteSenderistaAsync(email);
-        NotifyStatus(apiSuccess
-            ? $"Senderista '{email}' eliminado en API y caché local."
-            : $"Senderista '{email}' eliminado del caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _apiClient.DeleteAsync($"/senderistas?email=eq.{Uri.EscapeDataString(email)}", CurrentToken);
+                IsOnline = true;
+                NotifyStatus($"Senderista '{email}' eliminado en API.");
+            }
+            catch
+            {
+                IsOnline = false;
+            }
+        });
         return true;
     }
 
@@ -128,16 +133,28 @@ public class DataRepository : IDataRepository
     {
         try
         {
-            var apiData = await _apiClient.GetAsync<List<Ruta>>(
-                "/rutas?order=id.desc",
-                CurrentToken);
+            var lastSync = await _cacheService.GetLastSyncTimeAsync("rutas");
+            string endpoint = "/rutas?order=id.desc";
+            if (lastSync.HasValue && !forceRefresh)
+            {
+                endpoint = $"/rutas?fupdate=gt.{lastSync.Value.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")}&order=id.desc";
+            }
+
+            var apiData = await _apiClient.GetAsync<List<Ruta>>(endpoint, CurrentToken);
 
             if (apiData != null)
             {
                 IsOnline = true;
-                await _cacheService.ReplaceRutasAsync(apiData);
-                NotifyStatus($"Rutas actualizadas desde API ({apiData.Count} registros sincronizados con caché)");
-                return apiData;
+                if (lastSync.HasValue && !forceRefresh && apiData.Count > 0)
+                {
+                    await _cacheService.UpsertManyRutasAsync(apiData);
+                    NotifyStatus($"Rutas actualizadas (incremental: {apiData.Count} registros sincronizados)");
+                }
+                else if (apiData.Count > 0 || !lastSync.HasValue || forceRefresh)
+                {
+                    await _cacheService.ReplaceRutasAsync(apiData);
+                    NotifyStatus($"Rutas actualizadas desde API ({apiData.Count} registros completos)");
+                }
             }
         }
         catch (Exception ex)
@@ -151,51 +168,48 @@ public class DataRepository : IDataRepository
 
     public async Task<bool> SaveRutaAsync(Ruta ruta)
     {
-        bool apiSuccess = false;
-        try
-        {
-            // Intentar primero PATCH por ID (estándar REST en PostgREST para actualizar filas existentes)
-            bool patchOk = await _apiClient.PatchAsync($"/rutas?id=eq.{Uri.EscapeDataString(ruta.Id)}", ruta, CurrentToken);
-            if (patchOk)
-            {
-                apiSuccess = true;
-                IsOnline = true;
-            }
-            else
-            {
-                // Si PATCH devolvió false (ej: no encontró registro por id o es nueva), intentar POST con upsert
-                await _apiClient.PostAsync<List<Ruta>>("/rutas", ruta, CurrentToken, upsert: true);
-                apiSuccess = true;
-                IsOnline = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[DataRepository] Error al guardar ruta en API: {ex.Message}");
-            IsOnline = false;
-        }
-
         await _cacheService.UpsertRutaAsync(ruta);
-        NotifyStatus(apiSuccess ? $"Ruta '{ruta.Nombre}' guardada en API y caché." : $"Ruta guardada en caché local.");
-        return apiSuccess;
+        NotifyStatus($"Ruta guardada en caché local.");
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                ruta.Fupdate = null; // No mandar Fupdate
+                bool patchOk = await _apiClient.PatchAsync($"/rutas?id=eq.{Uri.EscapeDataString(ruta.Id)}", ruta, CurrentToken);
+                if (!patchOk)
+                {
+                    await _apiClient.PostAsync<List<Ruta>>("/rutas", ruta, CurrentToken, upsert: true);
+                }
+                IsOnline = true;
+                NotifyStatus($"Ruta '{ruta.Nombre}' sincronizada en background con API.");
+            }
+            catch (Exception ex)
+            {
+                IsOnline = false;
+                NotifyStatus($"Error de sincronización background para Ruta '{ruta.Nombre}': {ex.Message}");
+            }
+        });
+
+        return true;
     }
 
     public async Task<bool> DeleteRutaAsync(string id)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.DeleteAsync($"/rutas?id=eq.{Uri.EscapeDataString(id)}", CurrentToken);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.DeleteRutaAsync(id);
-        NotifyStatus(apiSuccess ? $"Ruta '{id}' eliminada en API y caché." : $"Ruta '{id}' eliminada del caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _apiClient.DeleteAsync($"/rutas?id=eq.{Uri.EscapeDataString(id)}", CurrentToken);
+                IsOnline = true;
+                NotifyStatus($"Ruta '{id}' eliminada en API.");
+            }
+            catch
+            {
+                IsOnline = false;
+            }
+        });
         return true;
     }
 
@@ -204,16 +218,28 @@ public class DataRepository : IDataRepository
     {
         try
         {
-            var apiData = await _apiClient.GetAsync<List<Agrupacion>>(
-                "/agrupaciones?order=nombre.asc",
-                CurrentToken);
+            var lastSync = await _cacheService.GetLastSyncTimeAsync("agrupaciones");
+            string endpoint = "/agrupaciones?order=nombre.asc";
+            if (lastSync.HasValue && !forceRefresh)
+            {
+                endpoint = $"/agrupaciones?fupdate=gt.{lastSync.Value.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")}&order=nombre.asc";
+            }
+
+            var apiData = await _apiClient.GetAsync<List<Agrupacion>>(endpoint, CurrentToken);
 
             if (apiData != null)
             {
                 IsOnline = true;
-                await _cacheService.ReplaceAgrupacionesAsync(apiData);
-                NotifyStatus($"Agrupaciones sincronizadas ({apiData.Count} registros)");
-                return apiData;
+                if (lastSync.HasValue && !forceRefresh && apiData.Count > 0)
+                {
+                    await _cacheService.UpsertManyAgrupacionesAsync(apiData);
+                    NotifyStatus($"Agrupaciones actualizadas (incremental: {apiData.Count} registros)");
+                }
+                else if (apiData.Count > 0 || !lastSync.HasValue || forceRefresh)
+                {
+                    await _cacheService.ReplaceAgrupacionesAsync(apiData);
+                    NotifyStatus($"Agrupaciones sincronizadas completas ({apiData.Count} registros)");
+                }
             }
         }
         catch (Exception ex)
@@ -227,52 +253,41 @@ public class DataRepository : IDataRepository
 
     public async Task<bool> SaveAgrupacionAsync(Agrupacion agrupacion)
     {
-        bool apiSuccess = false;
+        await _cacheService.UpsertAgrupacionAsync(agrupacion);
+        NotifyStatus("Sincronizando agrupación con servidor en la nube...");
+
         try
         {
+            agrupacion.Fupdate = null;
             bool patchOk = await _apiClient.PatchAsync($"/agrupaciones?id_agrupacion=eq.{Uri.EscapeDataString(agrupacion.IdAgrupacion)}", agrupacion, CurrentToken);
             if (!patchOk)
             {
                 await _apiClient.PostAsync<List<Agrupacion>>("/agrupaciones", agrupacion, CurrentToken, upsert: true);
             }
-            apiSuccess = true;
             IsOnline = true;
+            NotifyStatus($"Agrupación '{agrupacion.Nombre}' sincronizada con éxito en la nube.");
+            return true;
         }
-        catch
+        catch (Exception ex)
         {
-            try
-            {
-                await _apiClient.PostAsync<List<Agrupacion>>("/agrupaciones", agrupacion, CurrentToken, upsert: true);
-                apiSuccess = true;
-                IsOnline = true;
-            }
-            catch
-            {
-                IsOnline = false;
-            }
+            IsOnline = false;
+            NotifyStatus($"Guardado localmente. Error al sincronizar con el servidor: {ex.Message}");
+            return true;
         }
-
-        await _cacheService.UpsertAgrupacionAsync(agrupacion);
-        NotifyStatus(apiSuccess ? $"Agrupación '{agrupacion.Nombre}' guardada en API y caché." : "Guardado en caché local.");
-        return true;
     }
 
     public async Task<bool> DeleteAgrupacionAsync(string idAgrupacion)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.DeleteAsync($"/agrupaciones?id_agrupacion=eq.{Uri.EscapeDataString(idAgrupacion)}", CurrentToken);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.DeleteAgrupacionAsync(idAgrupacion);
-        NotifyStatus(apiSuccess ? $"Agrupación '{idAgrupacion}' eliminada." : $"Eliminada de caché.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _apiClient.DeleteAsync($"/agrupaciones?id_agrupacion=eq.{Uri.EscapeDataString(idAgrupacion)}", CurrentToken);
+                IsOnline = true;
+            }
+            catch { IsOnline = false; }
+        });
         return true;
     }
 
@@ -281,60 +296,61 @@ public class DataRepository : IDataRepository
     {
         try
         {
-            var apiData = await _apiClient.GetAsync<List<InvitacionRuta>>(
-                "/invitaciones_ruta?order=id_invitacion.desc",
-                CurrentToken);
+            var lastSync = await _cacheService.GetLastSyncTimeAsync("invitaciones");
+            string endpoint = "/invitaciones_ruta?order=id_invitacion.desc";
+            if (lastSync.HasValue && !forceRefresh)
+            {
+                endpoint = $"/invitaciones_ruta?fupdate=gt.{lastSync.Value.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")}&order=id_invitacion.desc";
+            }
+
+            var apiData = await _apiClient.GetAsync<List<InvitacionRuta>>(endpoint, CurrentToken);
 
             if (apiData != null)
             {
                 IsOnline = true;
-                await _cacheService.ReplaceInvitacionesAsync(apiData);
-                return apiData;
+                if (lastSync.HasValue && !forceRefresh && apiData.Count > 0)
+                {
+                    await _cacheService.UpsertManyInvitacionesAsync(apiData);
+                }
+                else if (apiData.Count > 0 || !lastSync.HasValue || forceRefresh)
+                {
+                    await _cacheService.ReplaceInvitacionesAsync(apiData);
+                }
             }
         }
-        catch
-        {
-            IsOnline = false;
-        }
+        catch { IsOnline = false; }
 
         return await _cacheService.GetInvitacionesAsync();
     }
 
     public async Task<bool> SaveInvitacionAsync(InvitacionRuta invitacion)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.PostAsync<List<InvitacionRuta>>("/invitaciones_ruta", invitacion, CurrentToken, upsert: true);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.UpsertInvitacionAsync(invitacion);
-        NotifyStatus(apiSuccess ? $"Invitación '{invitacion.Titulo}' guardada en API y caché." : "Invitación guardada en caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                invitacion.Fupdate = null;
+                await _apiClient.PostAsync<List<InvitacionRuta>>("/invitaciones_ruta", invitacion, CurrentToken, upsert: true);
+                IsOnline = true;
+            }
+            catch { IsOnline = false; }
+        });
         return true;
     }
 
     public async Task<bool> DeleteInvitacionAsync(string idInvitacion)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.DeleteAsync($"/invitaciones_ruta?id_invitacion=eq.{Uri.EscapeDataString(idInvitacion)}", CurrentToken);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.DeleteInvitacionAsync(idInvitacion);
-        NotifyStatus(apiSuccess ? $"Invitación '{idInvitacion}' eliminada en API y caché." : "Invitación eliminada en caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _apiClient.DeleteAsync($"/invitaciones_ruta?id_invitacion=eq.{Uri.EscapeDataString(idInvitacion)}", CurrentToken);
+                IsOnline = true;
+            }
+            catch { IsOnline = false; }
+        });
         return true;
     }
 
@@ -343,60 +359,61 @@ public class DataRepository : IDataRepository
     {
         try
         {
-            var apiData = await _apiClient.GetAsync<List<ParticipanteInvitacion>>(
-                "/participantes_invitacion?order=fecha_registro.desc",
-                CurrentToken);
+            var lastSync = await _cacheService.GetLastSyncTimeAsync("participantes");
+            string endpoint = "/participantes_invitacion?order=fecha_registro.desc";
+            if (lastSync.HasValue && !forceRefresh)
+            {
+                endpoint = $"/participantes_invitacion?fupdate=gt.{lastSync.Value.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")}&order=fecha_registro.desc";
+            }
+
+            var apiData = await _apiClient.GetAsync<List<ParticipanteInvitacion>>(endpoint, CurrentToken);
 
             if (apiData != null)
             {
                 IsOnline = true;
-                await _cacheService.ReplaceParticipantesAsync(apiData);
-                return apiData;
+                if (lastSync.HasValue && !forceRefresh && apiData.Count > 0)
+                {
+                    await _cacheService.UpsertManyParticipantesAsync(apiData);
+                }
+                else if (apiData.Count > 0 || !lastSync.HasValue || forceRefresh)
+                {
+                    await _cacheService.ReplaceParticipantesAsync(apiData);
+                }
             }
         }
-        catch
-        {
-            IsOnline = false;
-        }
+        catch { IsOnline = false; }
 
         return await _cacheService.GetParticipantesAsync();
     }
 
     public async Task<bool> SaveParticipanteAsync(ParticipanteInvitacion participante)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.PostAsync<List<ParticipanteInvitacion>>("/participantes_invitacion", participante, CurrentToken, upsert: true);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.UpsertParticipanteAsync(participante);
-        NotifyStatus(apiSuccess ? $"Participante '{participante.EmailSenderista}' guardado en API y caché." : "Participante guardado en caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                participante.Fupdate = null;
+                await _apiClient.PostAsync<List<ParticipanteInvitacion>>("/participantes_invitacion", participante, CurrentToken, upsert: true);
+                IsOnline = true;
+            }
+            catch { IsOnline = false; }
+        });
         return true;
     }
 
     public async Task<bool> DeleteParticipanteAsync(string idInvitacion, string emailSenderista)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.DeleteAsync($"/participantes_invitacion?id_invitacion=eq.{Uri.EscapeDataString(idInvitacion)}&email_senderista=eq.{Uri.EscapeDataString(emailSenderista)}", CurrentToken);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.DeleteParticipanteAsync(idInvitacion, emailSenderista);
-        NotifyStatus(apiSuccess ? $"Participante '{emailSenderista}' eliminado en API y caché." : "Participante eliminado en caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _apiClient.DeleteAsync($"/participantes_invitacion?id_invitacion=eq.{Uri.EscapeDataString(idInvitacion)}&email_senderista=eq.{Uri.EscapeDataString(emailSenderista)}", CurrentToken);
+                IsOnline = true;
+            }
+            catch { IsOnline = false; }
+        });
         return true;
     }
 
@@ -405,16 +422,28 @@ public class DataRepository : IDataRepository
     {
         try
         {
-            var apiData = await _apiClient.GetAsync<List<FraseDificultad>>(
-                "/frases_dificultad?order=id.asc",
-                CurrentToken);
+            var lastSync = await _cacheService.GetLastSyncTimeAsync("frases_dificultad");
+            string endpoint = "/frases_dificultad?order=id.asc";
+            if (lastSync.HasValue && !forceRefresh)
+            {
+                endpoint = $"/frases_dificultad?fupdate=gt.{lastSync.Value.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")}&order=id.asc";
+            }
+
+            var apiData = await _apiClient.GetAsync<List<FraseDificultad>>(endpoint, CurrentToken);
 
             if (apiData != null)
             {
                 IsOnline = true;
-                await _cacheService.ReplaceFrasesDificultadAsync(apiData);
-                NotifyStatus($"Frases de dificultad sincronizadas ({apiData.Count} registros)");
-                return apiData;
+                if (lastSync.HasValue && !forceRefresh && apiData.Count > 0)
+                {
+                    await _cacheService.UpsertManyFrasesDificultadAsync(apiData);
+                    NotifyStatus($"Frases de dificultad actualizadas incrementalmente ({apiData.Count} registros)");
+                }
+                else if (apiData.Count > 0 || !lastSync.HasValue || forceRefresh)
+                {
+                    await _cacheService.ReplaceFrasesDificultadAsync(apiData);
+                    NotifyStatus($"Frases de dificultad sincronizadas completas ({apiData.Count} registros)");
+                }
             }
         }
         catch (Exception ex)
@@ -428,39 +457,32 @@ public class DataRepository : IDataRepository
 
     public async Task<bool> SaveFraseDificultadAsync(FraseDificultad frase)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.PostAsync<List<FraseDificultad>>("/frases_dificultad", frase, CurrentToken, upsert: true);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.UpsertFraseDificultadAsync(frase);
-        NotifyStatus(apiSuccess ? $"Frase '{frase.Id}' guardada en API y caché." : "Frase guardada en caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                frase.Fupdate = null;
+                await _apiClient.PostAsync<List<FraseDificultad>>("/frases_dificultad", frase, CurrentToken, upsert: true);
+                IsOnline = true;
+            }
+            catch { IsOnline = false; }
+        });
         return true;
     }
 
     public async Task<bool> DeleteFraseDificultadAsync(string id)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.DeleteAsync($"/frases_dificultad?id=eq.{Uri.EscapeDataString(id)}", CurrentToken);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.DeleteFraseDificultadAsync(id);
-        NotifyStatus(apiSuccess ? $"Frase '{id}' eliminada en API y caché." : "Frase eliminada en caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _apiClient.DeleteAsync($"/frases_dificultad?id=eq.{Uri.EscapeDataString(id)}", CurrentToken);
+                IsOnline = true;
+            }
+            catch { IsOnline = false; }
+        });
         return true;
     }
 
@@ -469,16 +491,28 @@ public class DataRepository : IDataRepository
     {
         try
         {
-            var apiData = await _apiClient.GetAsync<List<RequisitoSenderismo>>(
-                "/requisitos_senderismo?order=id.asc",
-                CurrentToken);
+            var lastSync = await _cacheService.GetLastSyncTimeAsync("requisitos_senderismo");
+            string endpoint = "/requisitos_senderismo?order=id.asc";
+            if (lastSync.HasValue && !forceRefresh)
+            {
+                endpoint = $"/requisitos_senderismo?fupdate=gt.{lastSync.Value.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")}&order=id.asc";
+            }
+
+            var apiData = await _apiClient.GetAsync<List<RequisitoSenderismo>>(endpoint, CurrentToken);
 
             if (apiData != null)
             {
                 IsOnline = true;
-                await _cacheService.ReplaceRequisitosSenderismoAsync(apiData);
-                NotifyStatus($"Requisitos de senderismo sincronizados ({apiData.Count} registros)");
-                return apiData;
+                if (lastSync.HasValue && !forceRefresh && apiData.Count > 0)
+                {
+                    await _cacheService.UpsertManyRequisitosSenderismoAsync(apiData);
+                    NotifyStatus($"Requisitos actualizados incrementalmente ({apiData.Count} registros)");
+                }
+                else if (apiData.Count > 0 || !lastSync.HasValue || forceRefresh)
+                {
+                    await _cacheService.ReplaceRequisitosSenderismoAsync(apiData);
+                    NotifyStatus($"Requisitos de senderismo sincronizados ({apiData.Count} registros completos)");
+                }
             }
         }
         catch (Exception ex)
@@ -492,39 +526,32 @@ public class DataRepository : IDataRepository
 
     public async Task<bool> SaveRequisitoSenderismoAsync(RequisitoSenderismo requisito)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.PostAsync<List<RequisitoSenderismo>>("/requisitos_senderismo", requisito, CurrentToken, upsert: true);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.UpsertRequisitoSenderismoAsync(requisito);
-        NotifyStatus(apiSuccess ? $"Requisito '{requisito.Id}' guardado en API y caché." : "Requisito guardado en caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                requisito.Fupdate = null;
+                await _apiClient.PostAsync<List<RequisitoSenderismo>>("/requisitos_senderismo", requisito, CurrentToken, upsert: true);
+                IsOnline = true;
+            }
+            catch { IsOnline = false; }
+        });
         return true;
     }
 
     public async Task<bool> DeleteRequisitoSenderismoAsync(string id)
     {
-        bool apiSuccess = false;
-        try
-        {
-            await _apiClient.DeleteAsync($"/requisitos_senderismo?id=eq.{Uri.EscapeDataString(id)}", CurrentToken);
-            apiSuccess = true;
-            IsOnline = true;
-        }
-        catch
-        {
-            IsOnline = false;
-        }
-
         await _cacheService.DeleteRequisitoSenderismoAsync(id);
-        NotifyStatus(apiSuccess ? $"Requisito '{id}' eliminado en API y caché." : "Requisito eliminado en caché local.");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _apiClient.DeleteAsync($"/requisitos_senderismo?id=eq.{Uri.EscapeDataString(id)}", CurrentToken);
+                IsOnline = true;
+            }
+            catch { IsOnline = false; }
+        });
         return true;
     }
 
@@ -533,17 +560,17 @@ public class DataRepository : IDataRepository
     {
         try
         {
-            NotifyStatus("Iniciando sincronización completa con PostgREST...");
+            NotifyStatus("Iniciando sincronización con PostgREST (Incremental si es posible)...");
 
-            var s = await GetSenderistasAsync(true);
-            var r = await GetRutasAsync(true);
-            var a = await GetAgrupacionesAsync(true);
-            var i = await GetInvitacionesAsync(true);
-            var p = await GetParticipantesAsync(true);
-            var f = await GetFrasesDificultadAsync(true);
-            var req = await GetRequisitosSenderismoAsync(true);
+            var s = await GetSenderistasAsync(false);
+            var r = await GetRutasAsync(false);
+            var a = await GetAgrupacionesAsync(false);
+            var i = await GetInvitacionesAsync(false);
+            var p = await GetParticipantesAsync(false);
+            var f = await GetFrasesDificultadAsync(false);
+            var req = await GetRequisitosSenderismoAsync(false);
 
-            string summary = $"Sincronización exitosa: {s.Count} senderistas, {r.Count} rutas, {a.Count} agrupaciones, {i.Count} invitaciones, {p.Count} participantes, {f.Count} frases, {req.Count} requisitos en caché SQLite.";
+            string summary = $"Sincronización exitosa. Total en caché local: {s.Count} senderistas, {r.Count} rutas, {a.Count} agrupaciones, {i.Count} invitaciones, {p.Count} participantes, {f.Count} frases, {req.Count} requisitos.";
             NotifyStatus(summary);
             return (true, summary);
         }

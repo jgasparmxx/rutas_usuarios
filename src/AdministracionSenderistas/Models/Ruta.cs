@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -246,6 +246,13 @@ public partial class Ruta : ObservableObject
         }
     }
 
+        private string? _fupdate;
+    [JsonPropertyName("fupdate")]
+    public string? Fupdate
+    {
+        get => _fupdate;
+        set => SetProperty(ref _fupdate, value);
+    }
     public Ruta Clone() => new()
     {
         Id = Id,
@@ -272,6 +279,8 @@ public partial class Ruta : ObservableObject
         FechaHoraFin = FechaHoraFin,
         FechaRegistroNube = FechaRegistroNube,
         DatosEncriptados = DatosEncriptados,
-        Descripcion = Descripcion
+        Descripcion = Descripcion,
+        Fupdate = Fupdate
     };
 }
+
